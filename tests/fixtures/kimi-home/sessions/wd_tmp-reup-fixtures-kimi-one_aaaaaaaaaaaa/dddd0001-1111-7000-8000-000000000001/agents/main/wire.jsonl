@@ -1,0 +1,6 @@
+{"message":{"role":"user","content":[{"type":"text","text":"kimi fixture one first prompt"}]},"type":"agent.message.appended","time":1776231005000}
+{"message":{"role":"assistant","content":[{"type":"think","think":"pondering"},{"type":"text","text":"working on it"}]},"type":"agent.message.appended","time":1776231020000}
+{"message":{"role":"user","content":[{"type":"text","text":"kimi fixture one second prompt"}]},"type":"agent.message.appended","time":1776231060000}
+{"type":"agent.turn.started","turnId":1,"time":1776231001000}
+{"message":{"role":"assistant","content":[{"type":"text","text":"done"}]},"type":"agent.message.appended","time":1776231090000}
+{"type":"agent.turn.ended","turnId":1,"outcome":"done","time":1776231091000}

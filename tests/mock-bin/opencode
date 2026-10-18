@@ -1,0 +1,7 @@
+#!/bin/bash
+# Mock opencode binary for reup QA.
+# Records invocation (pwd + args) into a log, then exits.
+LOG="${OPENCODE_MOCK_LOG:-/tmp/reup/qa/opencode-mock.log}"
+mkdir -p "$(dirname "$LOG")"
+echo "CALLED pwd=$PWD args=$*" > "$LOG"
+sleep 0.2

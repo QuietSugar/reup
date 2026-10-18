@@ -1,0 +1,3 @@
+{"type":"topic","topic":"stale cwd regression","timestamp":1776234000000,"sessionId":"cb222222-2222-4222-8222-222222222222"}
+{"type":"message","role":"user","timestamp":1776234005000,"sessionId":"cb222222-2222-4222-8222-222222222222","cwd":"/bogus/wrong/path","message":{"content":"stale cwd regression prompt"}}
+{"type":"message","role":"assistant","timestamp":1776234012000,"sessionId":"cb222222-2222-4222-8222-222222222222","message":{"content":[{"type":"output_text","text":"synthetic response"}]}}

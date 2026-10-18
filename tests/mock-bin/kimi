@@ -1,0 +1,7 @@
+#!/bin/bash
+# Mock kimi binary for reup QA.
+# Records invocation (pwd + args) into a log, then exits.
+LOG="${KIMI_MOCK_LOG:-/tmp/reup/qa/kimi-mock.log}"
+mkdir -p "$(dirname "$LOG")"
+echo "CALLED pwd=$PWD args=$*" > "$LOG"
+sleep 0.2

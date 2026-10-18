@@ -1,0 +1,5 @@
+{"type":"topic","topic":"CodeBuddy fixture session","timestamp":1776229200000,"sessionId":"cb111111-1111-4111-8111-111111111111"}
+{"type":"message","role":"user","timestamp":1776229205000,"sessionId":"cb111111-1111-4111-8111-111111111111","cwd":"/tmp/reup/fixtures/codebuddy-alpha","message":{"content":"synthetic first prompt"}}
+{"type":"message","role":"assistant","timestamp":1776229212000,"sessionId":"cb111111-1111-4111-8111-111111111111","message":{"content":[{"type":"output_text","text":"synthetic response"}]}}
+{"type":"message","role":"user","timestamp":"2026-04-15T05:05:00Z","sessionId":"cb111111-1111-4111-8111-111111111111","message":{"content":[{"type":"input_text","text":"synthetic second prompt"}]}}
+{"type":"reasoning","text":"synthetic hidden reasoning","timestamp":1776229507000,"sessionId":"cb111111-1111-4111-8111-111111111111"}

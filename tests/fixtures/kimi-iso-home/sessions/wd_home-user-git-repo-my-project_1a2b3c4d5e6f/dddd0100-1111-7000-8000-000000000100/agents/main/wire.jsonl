@@ -1,0 +1,4 @@
+{"message":{"role":"user","content":[{"type":"text","text":"旧版会话的第一个提示"}]},"type":"agent.message.appended"}
+{"message":{"role":"assistant","content":[{"type":"think","think":"thinking"},{"type":"text","text":"好的"}]},"type":"agent.message.appended"}
+{"message":{"role":"user","content":[{"type":"text","text":"旧版会话的第二个提示"}]},"type":"agent.message.appended"}
+{"message":{"role":"assistant","content":[{"type":"text","text":"完成"}]},"type":"agent.message.appended"}

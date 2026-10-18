@@ -1,0 +1,9 @@
+.DS_Store
+tests/output/
+.claude/review-logs/
+.claude/work-reports/
+# docs/ is tracked (contains demo.gif for README) — don't ignore it.
+
+# Go build artifacts
+/reup
+dist/

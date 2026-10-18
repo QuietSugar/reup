@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "workspaces": {
+    "wd_tmp-reup-fixtures-kimi-one_aaaaaaaaaaaa": {
+      "root": "/tmp/reup/fixtures/kimi-one",
+      "name": "kimi-one"
+    },
+    "wd_tmp-reup-fixtures-kimi-two_bbbbbbbbbbbb": {
+      "root": "/tmp/reup/fixtures/kimi-two",
+      "name": "kimi-two"
+    },
+    "wd_tmp-reup-fixtures-kimi-four_eeeeeeeeeeee": {
+      "root": "/tmp/reup/fixtures/kimi-four",
+      "name": "kimi-four"
+    },
+    "wd_stray-bucket_dddddddddddd": {
+      "root": "/tmp/reup/fixtures/stray",
+      "name": "stray"
+    }
+  }
+}

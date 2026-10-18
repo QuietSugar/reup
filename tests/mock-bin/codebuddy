@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+LOG="${CODEBUDDY_MOCK_LOG:-/tmp/reup/qa/codebuddy-mock.log}"
+mkdir -p "$(dirname "$LOG")"
+printf 'pwd=%s\nargs=%s\n' "$PWD" "$*" >> "$LOG"
