@@ -152,8 +152,8 @@ reup only reads the session metadata needed for browsing and resuming.
 
 CodeBuddy's storage format was cross-checked against TokenTracker and its CLI
 resume reference. Kimi Code and OpenCode behavior was verified against
-kimi-code **2.1.1** and opencode **1.18.33** sources; older releases are
-best-effort only. For real-machine validation steps,
+kimi-code **2.1.1** and opencode **1.18.33**/**2.0.32** sources; older releases
+are best-effort only. For real-machine validation steps,
 see [docs/real-world-testing.md](docs/real-world-testing.md).
 
 Kimi leaves an opened-but-unused session directory behind (a `state.json` with

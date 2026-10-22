@@ -134,8 +134,8 @@ reup provider on opencode
 只读取浏览与恢复所需的会话元数据。
 
 CodeBuddy 的存储格式与 TokenTracker 及其 CLI 恢复参考做了交叉核对。Kimi
-Code 与 OpenCode 的行为分别对照 kimi-code **2.1.1** 与 opencode **1.18.33**
-源码验证；更早版本仅尽力兼容。真机验证步骤见
+Code 与 OpenCode 的行为分别对照 kimi-code **2.1.1** 与 opencode
+**1.18.33**/**2.0.32** 源码验证；更早版本仅尽力兼容。真机验证步骤见
 [docs/real-world-testing.md](docs/real-world-testing.md)。
 
 Kimi 会留下"打开过但未使用"的会话目录（`state.json` 无标题无 prompt，

@@ -1,9 +1,10 @@
-// Package opencode parses OpenCode (sst/opencode) v1.1+ / v2 session
-// storage: SQLite at $XDG_DATA_HOME/opencode/opencode.db. The session table
-// carries id/title/directory/parent_id, workspace_id/project_id (native
-// workspace identity) and time_created/time_updated/time_archived (epoch
-// ms). Prompts come from the session_message rows ({type:"user",text}) and
-// the message+part pair that v2 keeps for migrated 1.x dbs — both
+// Package opencode parses OpenCode (sst/opencode) 1.1+ / v2 session
+// storage: SQLite at $XDG_DATA_HOME/opencode/opencode.db. Sessions live in
+// session_v2 (opencode v2) or session (1.x installs that predate the v2
+// schema); both carry id/title/directory/parent_id, workspace_id/project_id
+// (native workspace identity) and time_created/time_updated/time_archived
+// (epoch ms). Prompts come from the session_message rows ({type:"user",text})
+// and the message+part pair that v2 keeps for migrated 1.x dbs — both
 // projections are unioned and deduped on (timestamp, text). Subagent/child
 // sessions (parent_id) and archived sessions are skipped, matching
 // opencode's own session list. Resume: `opencode --session <id>`.
@@ -11,6 +12,7 @@ package opencode
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -252,6 +254,21 @@ func projectLabel(dir string) string {
 	return "(unknown)"
 }
 
+// sessionTable opens the authoritative session table. opencode v2 moved
+// sessions to session_v2 and leaves `session` behind as a v1-compat copy that
+// no longer receives new rows (and still holds sessions the user deleted
+// under v2). Older 1.x databases only have `session`.
+func sessionTable(db *sqliteread.DB) (*sqliteread.Table, error) {
+	tbl, err := db.Table("session_v2")
+	if err == nil {
+		return tbl, nil
+	}
+	if !errors.Is(err, sqliteread.ErrNotFound) {
+		return nil, err
+	}
+	return db.Table("session")
+}
+
 // readSQLite returns the visible sessions from the database: root sessions
 // that are neither archived (time_archived set) nor a child/subagent session
 // (parent_id set).
@@ -261,7 +278,7 @@ func (p *Provider) readSQLite(path string) ([]session.Session, error) {
 		return nil, err
 	}
 	prompts := indexSQLitePrompts(db)
-	tbl, err := db.Table("session")
+	tbl, err := sessionTable(db)
 	if err != nil {
 		return nil, err
 	}
@@ -290,6 +307,9 @@ func (p *Provider) readSQLite(path string) ([]session.Session, error) {
 		created, _ := r.Int("time_created")
 		updated, _ := r.Int("time_updated")
 		pa := prompts[id]
+		if pa == nil {
+			pa = &promptAgg{} // session with no user/assistant messages yet
+		}
 
 		out = append(out, session.Session{
 			Source:       "opencode",

@@ -1,12 +1,14 @@
 // Command opencodefixture regenerates the committed test fixture
 // tests/fixtures/opencode-home/opencode.db.
 //
-// Schema mirrors opencode 1.18.x (baseline 1.18.33): the session table drives
-// session metadata, conversations are dual-projected into session_message
-// (durable pipeline) and the legacy message+part pair (v1-compat layer). The
-// fixture exercises: dual-write dedupe, pre-upgrade sessions that exist only
-// in the legacy pair, archived/child skipping, an oversized overflow-page
-// blob, and workspace/project identity (incl. the "global" sentinel).
+// Schema mirrors opencode 2.0.x: session_v2 drives session metadata, `session`
+// is the v1-compat copy left behind by the migration (and still holds sessions
+// deleted under v2), and conversations are dual-projected into session_message
+// (durable pipeline) plus the legacy message+part pair (v1-compat layer). The
+// fixture exercises: v2-table preference over the legacy copy, dual-write
+// dedupe, pre-upgrade sessions that exist only in the legacy pair, archived/
+// child skipping, an oversized overflow-page blob, and workspace/project
+// identity (incl. the "global" sentinel).
 //
 // Usage: go run ./tools/opencodefixture <db-path>
 package main
@@ -43,6 +45,12 @@ const (
 	eeeeA1       = 1776232900000 // 06:01:40
 	eeeeP2       = 1776233000000 // 06:03:20
 	eeeeUpdated  = 1776233100000 // 06:05:00
+	ffffCreated  = 1776231000000 // 05:30:00
+	ffffP1       = 1776231000000
+	ffffA1       = 1776231050000 // 05:30:50
+	ffffUpdated  = 1776231300000 // 05:35:00
+	decoyCreated = 1776236400000 // 07:00:00
+	decoyUpdated = 1776236500000 // 07:01:40
 )
 
 var ses = map[string]string{
@@ -51,6 +59,8 @@ var ses = map[string]string{
 	"cccc": "ses_cccccccccccccccccccccccccccc",
 	"dddd": "ses_dddddddddddddddddddddddddddd",
 	"eeee": "ses_eeeeeeeeeeeeeeeeeeeeeeeeeeee",
+	"ffff": "ses_ffffffffffffffffffffffffffff",
+	"deco": "ses_9999999999999999999999999999",
 }
 
 const schema = `
@@ -65,6 +75,21 @@ CREATE TABLE session (
   tokens_cache_write INTEGER NOT NULL DEFAULT 0, revert TEXT, permission TEXT,
   agent TEXT, model TEXT, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL,
   time_compacting INTEGER, time_archived INTEGER
+);
+CREATE TABLE session_v2 (
+  id TEXT PRIMARY KEY, project_id TEXT NOT NULL, workspace_id TEXT,
+  parent_id TEXT, fork_session_id TEXT, fork_boundary TEXT,
+  slug TEXT NOT NULL, directory TEXT NOT NULL, path TEXT,
+  title TEXT, version TEXT NOT NULL, share_url TEXT,
+  summary_additions INTEGER, summary_deletions INTEGER, summary_files INTEGER,
+  summary_diffs TEXT, metadata TEXT, cost REAL NOT NULL DEFAULT 0,
+  tokens_input INTEGER NOT NULL DEFAULT 0, tokens_output INTEGER NOT NULL DEFAULT 0,
+  tokens_reasoning INTEGER NOT NULL DEFAULT 0, tokens_cache_read INTEGER NOT NULL DEFAULT 0,
+  tokens_cache_write INTEGER NOT NULL DEFAULT 0, revert TEXT, permission TEXT,
+  agent TEXT, model TEXT, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL,
+  time_compacting INTEGER, time_archived INTEGER,
+  time_suspended INTEGER, resume_attempts INTEGER NOT NULL DEFAULT 0,
+  time_idle INTEGER, time_viewed INTEGER, idle_outcome TEXT
 );
 CREATE TABLE session_message (
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL, type TEXT NOT NULL,
@@ -82,6 +107,13 @@ CREATE TABLE part (
 `
 
 var insertSession = "INSERT INTO session VALUES (" + strings.Repeat("?,", 28) + "?)"
+
+var insertSessionV2 = "INSERT INTO session_v2 (id, project_id, workspace_id, parent_id, slug, " +
+	"directory, path, title, version, share_url, summary_additions, summary_deletions, " +
+	"summary_files, summary_diffs, metadata, cost, tokens_input, tokens_output, " +
+	"tokens_reasoning, tokens_cache_read, tokens_cache_write, revert, permission, agent, " +
+	"model, time_created, time_updated, time_compacting, time_archived) VALUES (" +
+	strings.Repeat("?,", 28) + "?)"
 
 func mustExec(db *sql.DB, q string, args ...any) {
 	if _, err := db.Exec(q, args...); err != nil {
@@ -128,11 +160,18 @@ func main() {
 
 	int64Ptr := func(v int64) *int64 { return &v }
 	// --- sessions ----------------------------------------------------------
+	// both writes a row to the authoritative session_v2 table and to the
+	// v1-compat `session` copy, mirroring a post-migration database.
+	both := func(row []any) {
+		mustExec(db, insertSession, row...)
+		mustExec(db, insertSessionV2, row...)
+	}
+
 	// ses_aaaa: dual-projection session (durable + legacy rows for the same
 	// turns; reup must dedupe them).
-	mustExec(db, insertSession, sessionRow(ses["aaaa"], "proj-oc", "one",
+	both(sessionRow(ses["aaaa"], "proj-oc", "one",
 		"/tmp/reup/fixtures/oc-one", "OpenCode Fixture One",
-		aaaaCreated, aaaaUpdated, nil, nil, nil, nil)...)
+		aaaaCreated, aaaaUpdated, nil, nil, nil, nil))
 
 	// ses_bbbb: archived → skipped. Carries an oversized diffs blob that
 	// spills into overflow pages.
@@ -143,29 +182,42 @@ func main() {
 		}
 		return out
 	}())
-	mustExec(db, insertSession, sessionRow(ses["bbbb"], "proj-oc", "two",
+	both(sessionRow(ses["bbbb"], "proj-oc", "two",
 		"/tmp/reup/fixtures/oc-two", "OpenCode Archived Fixture",
-		bbbbCreated, bbbbUpdated, nil, int64Ptr(bbbbArchived), &big, nil)...)
+		bbbbCreated, bbbbUpdated, nil, int64Ptr(bbbbArchived), &big, nil))
 
 	// ses_cccc: subagent child of ses_aaaa → skipped (parent_id set).
 	parent := ses["aaaa"]
-	mustExec(db, insertSession, sessionRow(ses["cccc"], "proj-oc", "one",
+	both(sessionRow(ses["cccc"], "proj-oc", "one",
 		"/tmp/reup/fixtures/oc-one", "OpenCode Child Fixture",
-		ccccCreated, ccccUpdated, &parent, nil, nil, nil)...)
+		ccccCreated, ccccUpdated, &parent, nil, nil, nil))
 
 	// ses_dddd: durable-projection-only session (newest → integration test
 	// target). project_id "global" is a sentinel, not a workspace id.
-	mustExec(db, insertSession, sessionRow(ses["dddd"], "global", "three",
+	both(sessionRow(ses["dddd"], "global", "three",
 		"/tmp/reup/fixtures/oc-three", "OpenCode Fixture Three",
-		ddddCreated, ddddUpdated, nil, nil, nil, nil)...)
+		ddddCreated, ddddUpdated, nil, nil, nil, nil))
 
 	// ses_eeee: pre-upgrade session — exists ONLY in the legacy message+part
 	// pair (no session_message rows, mirroring the missing backfill). Carries
 	// a workspace_id, which takes precedence over project_id.
 	wsLegacy := "ws-legacy-eeee"
-	mustExec(db, insertSession, sessionRow(ses["eeee"], "proj-legacy", "two",
+	both(sessionRow(ses["eeee"], "proj-legacy", "two",
 		"/tmp/reup/fixtures/oc-two", "OpenCode Legacy Session",
-		eeeeCreated, eeeeUpdated, nil, nil, nil, &wsLegacy)...)
+		eeeeCreated, eeeeUpdated, nil, nil, nil, &wsLegacy))
+
+	// ses_ffff: created after the v2 migration — exists ONLY in session_v2,
+	// the way every session opencode>=2.0 writes. reup must list it.
+	mustExec(db, insertSessionV2, sessionRow(ses["ffff"], "proj-oc4", "four",
+		"/tmp/reup/fixtures/oc-four", "OpenCode Fixture Four",
+		ffffCreated, ffffUpdated, nil, nil, nil, nil)...)
+
+	// ses_9999: deleted under v2 — the row survives only in the v1-compat
+	// `session` table. opencode's own list does not show it, so reup must not
+	// resurrect it.
+	mustExec(db, insertSession, sessionRow(ses["deco"], "proj-decoy", "gone",
+		"/tmp/reup/fixtures/oc-decoy", "OpenCode Deleted Decoy",
+		decoyCreated, decoyUpdated, nil, nil, nil, nil)...)
 
 	// --- session_message (durable projection) ------------------------------
 	sm := []struct {
@@ -180,6 +232,8 @@ func main() {
 		{"msg_aa4", ses["aaaa"], "assistant", 4, aaaaA2, ""},
 		{"msg_dd1", ses["dddd"], "user", 1, ddddP1, "opencode fixture three prompt"},
 		{"msg_dd2", ses["dddd"], "assistant", 2, ddddA1, ""},
+		{"msg_ff1", ses["ffff"], "user", 1, ffffP1, "opencode fixture four v2-only prompt"},
+		{"msg_ff2", ses["ffff"], "assistant", 2, ffffA1, ""},
 	}
 	for _, m := range sm {
 		mustExec(db, "INSERT INTO session_message VALUES (?,?,?,?,?,?,?)",
