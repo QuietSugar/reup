@@ -53,11 +53,21 @@ func TestMain(m *testing.M) {
 
 func fixtureEnv(t *testing.T) []string {
 	t.Helper()
+	// Isolate the user config: a real ~/.config/reup/config.json (e.g. a
+	// provider disabled on the developer's machine) must not leak into the
+	// pinned fixture expectations. Tests that assert config writes pass
+	// their own path via fixtureEnvWithConfig.
+	return fixtureEnvWithConfig(t, filepath.Join(t.TempDir(), "config.json"))
+}
+
+func fixtureEnvWithConfig(t *testing.T, cfgPath string) []string {
+	t.Helper()
 	mockBin := filepath.Join(repoRoot, "tests", "mock-bin")
 	env := []string{
 		"PATH=" + mockBin + string(os.PathListSeparator) + os.Getenv("PATH"),
 		"HOME=" + os.Getenv("HOME"),
 		"TERM=xterm-256color",
+		"REUP_CONFIG=" + cfgPath,
 		"REUP_CODEBUDDY_HOME=" + filepath.Join(repoRoot, "tests", "fixtures", "codebuddy"),
 		"REUP_KIMI_HOME=" + filepath.Join(repoRoot, "tests", "fixtures", "kimi-home"),
 		"REUP_KIMI_BIN=kimi",
@@ -505,9 +515,8 @@ func TestOpenCodeHideFlow(t *testing.T) {
 	materializeFixtureCwds(t)
 	logPath := filepath.Join(t.TempDir(), "opencode-mock.log")
 	cfgPath := filepath.Join(t.TempDir(), "config.json")
-	env := append(fixtureEnv(t),
-		"OPENCODE_MOCK_LOG="+logPath,
-		"REUP_CONFIG="+cfgPath)
+	env := append(fixtureEnvWithConfig(t, cfgPath),
+		"OPENCODE_MOCK_LOG="+logPath)
 
 	r := startPicker(t, env, "--source=opencode", "--all")
 	r.waitFor(t, "opencode", 5*time.Second)
