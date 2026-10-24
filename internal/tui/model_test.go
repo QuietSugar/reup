@@ -543,3 +543,68 @@ func TestMousePressResetsIdleTimerButMotionDoesNot(t *testing.T) {
 		t.Fatal("mouse motion must not reset the idle timer")
 	}
 }
+
+// --- mouse focus ------------------------------------------------------------
+
+// Clicking a sidebar workspace grabs sidebar focus. Clicking a top tab or a
+// session row afterwards must hand focus back to the list — otherwise j/k
+// keep driving the sidebar and enter toggles its items, so the session list
+// looks frozen (reported as "selected directory + tab, then keys dead").
+func TestMouseClickRestoresListFocus(t *testing.T) {
+	m := newDashboard(t, 140)
+	click := func(x, y int) {
+		up, _ := m.Update(tea.MouseMsg{Type: tea.MouseLeft, Action: tea.MouseActionPress, X: x, Y: y})
+		m = up.(Model)
+	}
+
+	click(5, 2) // first workspace row in the sidebar
+	if m.focus != focusSidebar || m.wsFilter == "" {
+		t.Fatalf("sidebar click: focus=%v wsFilter=%q, want sidebar focus and a filter set", m.focus, m.wsFilter)
+	}
+
+	click(20, 0) // second tab on the top bar
+	if m.focus != focusList {
+		t.Fatalf("tab click left focus=%v, want list focus", m.focus)
+	}
+	if m.tabIdx != 1 || m.tabs[m.tabIdx] != "kimi-code" {
+		t.Fatalf("tab click: tabIdx=%d (%q), want 1 (kimi-code)", m.tabIdx, m.tabs[m.tabIdx])
+	}
+
+	// Keyboard must drive the session list again: j keeps a valid cursor
+	// and enter resumes the selected session.
+	up, _ := m.Update(key("j"))
+	m = up.(Model)
+	up, _ = m.Update(key("enter"))
+	m = up.(Model)
+	if m.selected == nil || m.selected.SessionID != "k1" {
+		t.Fatalf("enter after tab click: selected=%v, want k1", m.selected)
+	}
+}
+
+// A list click must also return focus to the list, and the wheel scrolls
+// sessions so it should too.
+func TestListClickAndWheelRestoreListFocus(t *testing.T) {
+	m := newDashboard(t, 140)
+	click := func(x, y int) {
+		up, _ := m.Update(tea.MouseMsg{Type: tea.MouseLeft, Action: tea.MouseActionPress, X: x, Y: y})
+		m = up.(Model)
+	}
+
+	click(5, 2)  // sidebar workspace
+	click(30, 2) // a row in the session list
+	if m.focus != focusList {
+		t.Fatalf("list click left focus=%v, want list focus", m.focus)
+	}
+	if m.cursor != 0 {
+		t.Fatalf("list click: cursor=%d, want 0 (first row)", m.cursor)
+	}
+
+	up, _ := m.Update(tea.MouseMsg{Type: tea.MouseWheelDown})
+	m = up.(Model)
+	if m.focus != focusList {
+		t.Fatalf("wheel left focus=%v, want list focus", m.focus)
+	}
+	if m.cursor != 1 {
+		t.Fatalf("wheel: cursor=%d, want 1 (scrolled to the first session)", m.cursor)
+	}
+}

@@ -50,9 +50,15 @@ func (m *Model) handleMouseClick(x, y int) (tea.Model, tea.Cmd) {
 		mainTop++
 	}
 	if y < mainTop {
-		if i := tabAt(*m, x); i >= 0 && i != m.tabIdx {
-			m.tabIdx = i
-			m.rebuild()
+		if i := tabAt(*m, x); i >= 0 {
+			// Clicking the tab bar hands focus back to the list: a tab
+			// switch from the sidebar would otherwise leave focus there,
+			// making j/k/enter drive the sidebar instead of the sessions.
+			m.focus = focusList
+			if i != m.tabIdx {
+				m.tabIdx = i
+				m.rebuild()
+			}
 		}
 		return m, nil
 	}
@@ -70,6 +76,9 @@ func (m *Model) handleMouseClick(x, y int) (tea.Model, tea.Cmd) {
 		listX = sideW + 1
 	}
 	if x >= listX && x < listX+listW {
+		// Same focus rule as the tab bar: interacting with the session
+		// list means keyboard navigation should drive it.
+		m.focus = focusList
 		return m.listClick(li)
 	}
 	_ = prevW

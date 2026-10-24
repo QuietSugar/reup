@@ -422,9 +422,11 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Type == tea.MouseLeft && msg.Action == tea.MouseActionPress:
 			return m.handleMouseClick(msg.X, msg.Y)
 		case msg.Type == tea.MouseWheelUp:
+			m.focus = focusList // the wheel scrolls sessions, so keyboard nav should too
 			m.handleMouseWheel(true)
 			return m, nil
 		case msg.Type == tea.MouseWheelDown:
+			m.focus = focusList
 			m.handleMouseWheel(false)
 			return m, nil
 		}
