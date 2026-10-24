@@ -483,3 +483,63 @@ func TestDetailPanelStylesLabels(t *testing.T) {
 		t.Errorf("styled line width = %d, want 44", lineWidth(src))
 	}
 }
+
+// --- idle timeout -----------------------------------------------------------
+
+func TestIdleTimeoutQuits(t *testing.T) {
+	m := NewModel(nil, session.Filters{})
+	next, cmd := m.Update(idleMsg{id: m.idleID})
+	got := next.(Model)
+	if !got.timedOut {
+		t.Fatal("idle timeout did not mark the model as timed out")
+	}
+	if cmd == nil {
+		t.Fatal("idle timeout returned no quit command")
+	}
+}
+
+func TestStaleIdleTimerIgnored(t *testing.T) {
+	m := NewModel(nil, session.Filters{})
+	next, cmd := m.Update(idleMsg{id: m.idleID + 1})
+	got := next.(Model)
+	if got.timedOut {
+		t.Fatal("stale idle timer quit the picker")
+	}
+	if cmd != nil {
+		t.Fatal("stale idle timer returned a command")
+	}
+}
+
+func TestUserInputResetsIdleTimer(t *testing.T) {
+	m := NewModel(nil, session.Filters{})
+	next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	got := next.(Model)
+	if got.idleID != 1 {
+		t.Fatalf("idleID after input = %d, want 1", got.idleID)
+	}
+	if cmd == nil {
+		t.Fatal("input returned no command (idle timer not rescheduled)")
+	}
+	// The pre-input timer (generation 0) must not quit the picker later.
+	next, _ = got.Update(idleMsg{id: 0})
+	if next.(Model).timedOut {
+		t.Fatal("stale pre-input timer quit the picker after input")
+	}
+	// The current generation's timer must.
+	next, _ = got.Update(idleMsg{id: 1})
+	if !next.(Model).timedOut {
+		t.Fatal("current-generation idle timer did not quit the picker")
+	}
+}
+
+func TestMousePressResetsIdleTimerButMotionDoesNot(t *testing.T) {
+	m := NewModel(nil, session.Filters{})
+	press := tea.MouseMsg{Type: tea.MouseLeft, Action: tea.MouseActionPress}
+	if next, _ := m.Update(press); next.(Model).idleID != 1 {
+		t.Fatal("mouse press did not reset the idle timer")
+	}
+	motion := tea.MouseMsg{Type: tea.MouseLeft, Action: tea.MouseActionMotion}
+	if next, _ := m.Update(motion); next.(Model).idleID != 0 {
+		t.Fatal("mouse motion must not reset the idle timer")
+	}
+}
