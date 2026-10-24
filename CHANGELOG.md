@@ -9,6 +9,16 @@ keep a fresh empty `[Unreleased]` on top.
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-10-24
+
+### Added
+
+- The interactive picker exits on its own after 30 minutes without input, so a forgotten session browser no longer sits in the background forever; it says why on exit
+
+### Fixed
+
+- OpenCode provider memory blow-up on large session databases: the scanner no longer reads `opencode.db` (and its `-wal`) whole into memory. Pages are fetched on demand through a small LRU cache, table scans stream one row at a time, and an oversized `-wal` (past 256MB) falls back to the checkpointed snapshot. A 2.6GB database that peaked at ~2.9GB RSS now scans in ~55MB; a scan interrupted by a live writer's checkpoint retries once with a cold cache instead of failing
+
 ## [0.0.1] - 2026-10-18
 
 ### Added
