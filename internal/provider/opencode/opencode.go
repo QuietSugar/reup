@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -93,15 +94,24 @@ type promptAgg struct {
 	firstTS, lastTS int64
 	first, last     string
 	asst            int
-	seenP           map[string]bool // "ts\x00text" — dedupes dual-projected rows
+	seenP           map[string]bool // dedupe keys "ts\x00hash" — see promptKey
 	seenA           map[string]bool // assistant turn identity (parent user ID, timestamp fallback)
+}
+
+// promptKey identifies one (timestamp, text) prompt for dedupe. The text is
+// hashed so the dedupe set stays small even when individual prompts are
+// huge; a hash collision only skips one dedupe.
+func promptKey(ts int64, text string) string {
+	h := fnv.New64a()
+	h.Write([]byte(text))
+	return strconv.FormatInt(ts, 10) + "\x00" + strconv.FormatUint(h.Sum64(), 16)
 }
 
 func (a *promptAgg) addPrompt(ts int64, text string) {
 	if text == "" {
 		return
 	}
-	key := strconv.FormatInt(ts, 10) + "\x00" + text
+	key := promptKey(ts, text)
 	if a.seenP == nil {
 		a.seenP = map[string]bool{}
 	}
@@ -277,6 +287,7 @@ func (p *Provider) readSQLite(path string) ([]session.Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer db.Close()
 	prompts := indexSQLitePrompts(db)
 	tbl, err := sessionTable(db)
 	if err != nil {

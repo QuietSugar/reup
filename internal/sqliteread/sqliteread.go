@@ -8,6 +8,11 @@
 // name → Value maps, with column names parsed from the stored CREATE TABLE
 // statement so mild schema drift across app versions stays harmless.
 //
+// Memory profile: the main database file is read lazily page-by-page through
+// a small LRU cache (see maxCachedPages), so file size does not bound RSS,
+// and table scans stream one decoded row at a time. The -wal sidecar is the
+// one file loaded whole, capped at maxWALBytes.
+//
 // Committed WAL frames are overlaid on the database image, so a live
 // writer's uncheckpointed inserts and deletes are visible (and deleted rows
 // are not resurrected). Frames past the last commit, or with a stale salt or
@@ -18,6 +23,7 @@
 package sqliteread
 
 import (
+	"container/list"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -32,8 +38,21 @@ type Value any
 // ErrNotFound is returned when the requested table does not exist.
 var ErrNotFound = errors.New("sqliteread: table not found")
 
+// maxCachedPages bounds the main-database page cache. The cache exists so
+// b-tree interior pages and hot leaves are not re-read from disk; it is not
+// a retention store — walk accesses pages transiently, so an evicted page is
+// simply re-read on demand. At the maximum page size (64KB) this caps the
+// cache at 64MB; the far more common 4KB pages cap it at 4MB.
+const maxCachedPages = 1024
+
+// maxWALBytes bounds the -wal sidecar read into memory. A WAL past this size
+// is treated as unusable: scanning falls back to the main database's last
+// checkpoint snapshot instead of loading gigabytes of frames.
+const maxWALBytes = 256 << 20
+
 type db struct {
-	data     []byte
+	f        *os.File // main database file; nil for a WAL-only database
+	size     int64    // main file size at open, for page bounds checks
 	pageSize int
 	usable   int
 	// wal holds committed page images from the -wal file, keyed by page
@@ -41,20 +60,37 @@ type db struct {
 	// WAL was applied).
 	wal      map[int][]byte
 	walPages int
+	// cache is a small LRU of main-file pages read on demand, so database
+	// size does not dictate memory usage.
+	cache map[int]*list.Element
+	lru   *list.List // element values are pageBuf, oldest at the front
 }
 
-// Open reads the database file and overlays its committed WAL frames.
+type pageBuf struct {
+	pgno int
+	data []byte
+}
+
+// Open opens the database file and overlays its committed WAL frames. The
+// main file is read page-by-page through a small cache — never whole into
+// memory — so a multi-gigabyte database scans in bounded memory.
 func Open(path string) (*DB, error) {
-	data, err := os.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	wal, _ := os.ReadFile(path + "-wal")
-	d, err := openBytes(data)
+	st, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	wal := readWAL(path)
+	d, err := openFile(f, st.Size())
 	if err == nil {
 		d.d.applyWAL(wal)
 		return d, nil
 	}
+	f.Close()
 	// A database created in WAL mode stays zero bytes until its first
 	// checkpoint: page 1 and everything else live in the WAL.
 	if d, ok := openWALOnly(wal); ok {
@@ -63,17 +99,48 @@ func Open(path string) (*DB, error) {
 	return nil, err
 }
 
+// Close releases the database file handle.
+func (d *DB) Close() error {
+	if d.d.f == nil {
+		return nil
+	}
+	return d.d.f.Close()
+}
+
+// readWAL loads the -wal sidecar when it exists and stays within maxWALBytes;
+// an absent or oversize WAL reads as empty, which callers treat as "no
+// committed overlay" (the fallback documented on maxWALBytes).
+func readWAL(path string) []byte {
+	st, err := os.Stat(path + "-wal")
+	if err != nil || st.Size() > maxWALBytes {
+		return nil
+	}
+	wal, _ := os.ReadFile(path + "-wal")
+	return wal
+}
+
 // DB is an opened read-only database.
 type DB struct {
 	d *db
 }
 
-func openBytes(data []byte) (*DB, error) {
-	ps, reserved, err := pageParams(data)
+func openFile(f *os.File, size int64) (*DB, error) {
+	if size < 100 {
+		return nil, fmt.Errorf("sqliteread: not a sqlite 3 database")
+	}
+	hdr := make([]byte, 100)
+	if _, err := f.ReadAt(hdr, 0); err != nil {
+		return nil, err
+	}
+	ps, reserved, err := pageParams(hdr)
 	if err != nil {
 		return nil, err
 	}
-	return &DB{d: &db{data: data, pageSize: ps, usable: ps - reserved}}, nil
+	d := &db{
+		f: f, size: size, pageSize: ps, usable: ps - reserved,
+		cache: map[int]*list.Element{}, lru: list.New(),
+	}
+	return &DB{d: d}, nil
 }
 
 // openWALOnly builds a database image from a WAL whose main file has not been
@@ -249,7 +316,12 @@ type table struct {
 
 // Table returns a handle to a user table by name.
 func (d *DB) Table(name string) (*Table, error) {
-	rows, err := d.d.scan(1) // sqlite_master b-tree is rooted at page 1
+	var rows [][]Value
+	err := d.d.withRetry(func() error {
+		var err error
+		rows, err = d.d.scan(1) // sqlite_master b-tree is rooted at page 1
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -322,37 +394,67 @@ func (r Row) Str(col string) (string, bool) {
 // Scan walks the whole table b-tree in rowid order, calling fn per row.
 // Return an error from fn to abort (returned verbatim).
 func (t *Table) Scan(fn func(Row) error) error {
-	rows, err := t.d.scan(t.root)
-	if err != nil {
-		return err
-	}
-	for _, row := range rows {
-		r := make(Row, len(t.columns))
-		for i, c := range t.columns {
-			if i < len(row) {
-				r[c] = row[i]
-			} else {
-				r[c] = nil
+	err := t.d.withRetry(func() error {
+		return t.d.walk(t.root, func(rec []Value) error {
+			r := make(Row, len(t.columns))
+			for i, c := range t.columns {
+				if i < len(rec) {
+					r[c] = rec[i]
+				} else {
+					r[c] = nil
+				}
 			}
-		}
-		if err := fn(r); err != nil {
-			return err
-		}
+			return fn(r)
+		}, 0)
+	})
+	var ab *abortError
+	if errors.As(err, &ab) {
+		return ab.err
 	}
-	return nil
+	return err
 }
 
-// scan walks a table b-tree rooted at the given page, returning decoded
-// records (cell values in column order).
+// scan walks a table b-tree rooted at the given page, collecting decoded
+// records (cell values in column order). Only for small tables; large ones
+// stream through walk.
 func (d *db) scan(root int) ([][]Value, error) {
 	var out [][]Value
-	if err := d.walk(root, &out, 0); err != nil {
-		return nil, err
-	}
-	return out, nil
+	err := d.walk(root, func(rec []Value) error {
+		out = append(out, rec)
+		return nil
+	}, 0)
+	return out, err
 }
 
-func (d *db) walk(pgno int, out *[][]Value, depth int) error {
+// abortError wraps an error returned by a Scan callback: it aborts the walk
+// on purpose and must not be retried.
+type abortError struct{ err error }
+
+func (e *abortError) Error() string { return e.err.Error() }
+
+// withRetry runs fn, and on failure flushes the page cache and runs it once
+// more. A live writer can checkpoint — truncate or rewrite — the main file
+// while a scan is in flight; pages cached from the old image then make the
+// b-tree walk fail, and re-reading from the new image is the cheap fix.
+// Callback aborts pass through untouched.
+func (d *db) withRetry(fn func() error) error {
+	err := fn()
+	if err == nil || d.f == nil {
+		return err
+	}
+	var ab *abortError
+	if errors.As(err, &ab) {
+		return err
+	}
+	d.clearCache()
+	return fn()
+}
+
+// walk traverses the table b-tree rooted at pgno, invoking fn per decoded
+// record in rowid order so a table scan never materializes more than one
+// row. An error from fn aborts the walk and is returned wrapped in
+// abortError.
+func (d *db) walk(pgno int, fn func([]Value) error, depth int) error {
 	if depth > 64 {
 		return fmt.Errorf("sqliteread: b-tree too deep")
 	}
@@ -385,7 +487,9 @@ func (d *db) walk(pgno int, out *[][]Value, depth int) error {
 			if err != nil {
 				return err
 			}
-			*out = append(*out, rec)
+			if err := fn(rec); err != nil {
+				return &abortError{err}
+			}
 		}
 		return nil
 	case 0x05: // table interior
@@ -397,12 +501,12 @@ func (d *db) walk(pgno int, out *[][]Value, depth int) error {
 				continue
 			}
 			child := int(binary.BigEndian.Uint32(page[off : off+4]))
-			if err := d.walk(child, out, depth+1); err != nil {
+			if err := d.walk(child, fn, depth+1); err != nil {
 				return err
 			}
 		}
 		right := int(binary.BigEndian.Uint32(page[base+8 : base+12]))
-		return d.walk(right, out, depth+1)
+		return d.walk(right, fn, depth+1)
 	default:
 		return fmt.Errorf("sqliteread: page %d is not a table b-tree page (type %#x)", pgno, typ)
 	}
@@ -478,11 +582,33 @@ func (d *db) page(pgno int) ([]byte, error) {
 	if d.walPages != 0 && pgno > d.walPages {
 		return nil, fmt.Errorf("sqliteread: page %d out of range", pgno)
 	}
-	start := (pgno - 1) * d.pageSize
-	if start+d.pageSize > len(d.data) {
+	start := int64(pgno-1) * int64(d.pageSize)
+	if start+int64(d.pageSize) > d.size {
 		return nil, fmt.Errorf("sqliteread: page %d out of range", pgno)
 	}
-	return d.data[start : start+d.pageSize], nil
+	if el, ok := d.cache[pgno]; ok {
+		d.lru.MoveToBack(el)
+		return el.Value.(pageBuf).data, nil
+	}
+	data := make([]byte, d.pageSize)
+	if _, err := d.f.ReadAt(data, start); err != nil {
+		return nil, err
+	}
+	d.cache[pgno] = d.lru.PushBack(pageBuf{pgno, data})
+	for d.lru.Len() > maxCachedPages {
+		front := d.lru.Front()
+		d.lru.Remove(front)
+		delete(d.cache, front.Value.(pageBuf).pgno)
+	}
+	return data, nil
+}
+
+// clearCache drops every cached main-file page. Used when a scan fails and
+// is retried: the failure may be a stale cached image of a file a live
+// writer just checkpointed.
+func (d *db) clearCache() {
+	d.cache = map[int]*list.Element{}
+	d.lru.Init()
 }
 
 func readVarint(b []byte, pos int) (int64, int, error) {
