@@ -9,6 +9,8 @@ keep a fresh empty `[Unreleased]` on top.
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-10-25
+
 ### Fixed
 
 - Clicking a workspace in the sidebar no longer strands keyboard focus there: clicking a top tab, a session row, or wheel-scrolling now returns focus to the session list, so j/k/enter keep working after mouse navigation
