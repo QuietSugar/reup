@@ -8,6 +8,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sahilm/fuzzy"
 
+	"github.com/QuietSugar/reup/internal/brand"
 	"github.com/QuietSugar/reup/internal/provider"
 	"github.com/QuietSugar/reup/internal/session"
 	"github.com/QuietSugar/reup/internal/workspace"
@@ -58,6 +60,13 @@ type Model struct {
 	spin    spinner.Model
 
 	lastV time.Time // double-tap detection for the full-detail popup
+
+	// Idle exit: each scheduled timer carries the idleID generation that
+	// created it; user input bumps the generation, so a superseded timer
+	// firing later is ignored. timedOut marks the quit as an idle timeout so
+	// Pick can say why the picker disappeared.
+	idleID   int
+	timedOut bool
 
 	modal      modalKind
 	provCur    int
@@ -242,15 +251,65 @@ func (m *Model) selectedSession() *session.Session {
 	return nil
 }
 
+// idleTimeout is how long the picker waits without input before quitting on
+// its own. A package var so tests can shorten it.
+var idleTimeout = 30 * time.Minute
+
+// idleMsg fires when the idle timeout elapses; id is the Model.idleID
+// generation that scheduled it, so stale timers are ignored.
+type idleMsg struct{ id int }
+
+// idleCmd schedules the idle-timeout check for the current generation.
+func (m Model) idleCmd() tea.Cmd {
+	id := m.idleID
+	return tea.Tick(idleTimeout, func(time.Time) tea.Msg { return idleMsg{id} })
+}
+
 // --- bubbletea plumbing ----------------------------------------------------
 
+// Update is the bubbletea entry point. It wraps update() to reset the idle
+// timeout on real user input — keys and mouse presses/wheel; motion events
+// are too chatty to count as activity.
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	reset := false
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		reset = true
+	case tea.MouseMsg:
+		reset = msg.Action == tea.MouseActionPress ||
+			msg.Type == tea.MouseWheelUp || msg.Type == tea.MouseWheelDown
+	}
+	if reset {
+		m.idleID++
+	}
+	next, cmd := m.update(msg)
+	if !reset {
+		return next, cmd
+	}
+	// Some handlers (mouse click) return *Model; normalize to a value.
+	switch got := next.(type) {
+	case Model:
+		m = got
+	case *Model:
+		m = *got
+	}
+	return m, tea.Batch(cmd, m.idleCmd())
+}
+
 func (m Model) Init() tea.Cmd {
-	cmds := append([]tea.Cmd{m.spin.Tick}, m.scanCmds()...)
+	cmds := append([]tea.Cmd{m.spin.Tick, m.idleCmd()}, m.scanCmds()...)
 	return tea.Batch(cmds...)
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case idleMsg:
+		if msg.id == m.idleID {
+			m.timedOut = true
+			return m, tea.Quit
+		}
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		if !m.sized {
@@ -593,6 +652,10 @@ func Pick(filters session.Filters) (*session.Session, bool, error) {
 	m, ok := final.(Model)
 	if !ok {
 		return nil, false, fmt.Errorf("unexpected model type")
+	}
+	if m.timedOut {
+		fmt.Fprintf(os.Stderr, "%s: no activity for %s — exiting\n",
+			brand.Name, idleTimeout.Round(time.Second))
 	}
 	return m.Selected(), m.NoSessions(), nil
 }

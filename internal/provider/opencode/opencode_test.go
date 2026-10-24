@@ -1,6 +1,7 @@
 package opencode
 
 import (
+	"database/sql"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/QuietSugar/reup/internal/session"
+	_ "modernc.org/sqlite"
 )
 
 func fixtureDir(t *testing.T, parts ...string) string {
@@ -77,11 +79,10 @@ func listAll(t *testing.T) map[string]session.Session {
 
 func TestSQLiteParsing(t *testing.T) {
 	sessions := listAll(t)
-	// 5 sqlite rows → archived + child skipped, 3 sqlite roots remain. The
-	// JSON-only legacy session is not merged in: a database is the source of
-	// truth (see TestLegacyJSONIgnoredWhenDatabaseExists).
-	if len(sessions) != 3 {
-		t.Fatalf("expected 3 sessions (3 sqlite roots), got %d: %v",
+	// session_v2 holds 6 rows; archived + child are skipped and the legacy-only
+	// decoy never appears, leaving 4 roots.
+	if len(sessions) != 4 {
+		t.Fatalf("expected 4 sessions (4 session_v2 roots), got %d: %v",
 			len(sessions), sessions)
 	}
 
@@ -178,8 +179,8 @@ func TestFilters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(on) != 3 {
-		t.Errorf("on-day filter returned %d, want 3", len(on))
+	if len(on) != 4 {
+		t.Errorf("on-day filter returned %d, want 4", len(on))
 	}
 	proj, err := p.ListSessions(session.Filters{AllTime: true, Days: -1, Project: "oc-three"})
 	if err != nil {
@@ -205,6 +206,71 @@ func TestFilters(t *testing.T) {
 	}
 	if len(recent) != 0 {
 		t.Errorf("3-day window should exclude ancient fixtures, got %d", len(recent))
+	}
+}
+
+// opencode v2 writes new sessions to session_v2 only, leaving `session` as a
+// v1-compat copy that still contains deleted rows. Reading `session` alone
+// hides every v2-era session (the reported hall-wiki bug); reading it at all
+// resurrects deleted ones.
+func TestSessionV2TablePreferred(t *testing.T) {
+	sessions := listAll(t)
+	four, ok := sessions["ses_ffffffffffffffffffffffffffff"]
+	if !ok {
+		t.Fatal("session_v2-only session missing from the listing")
+	}
+	if four.Title != "OpenCode Fixture Four" {
+		t.Errorf("title = %q", four.Title)
+	}
+	if four.FirstPrompt != "opencode fixture four v2-only prompt" {
+		t.Errorf("first prompt = %q", four.FirstPrompt)
+	}
+	if four.AsstCount != 1 {
+		t.Errorf("assistant count = %d, want 1", four.AsstCount)
+	}
+	if _, ok := sessions["ses_9999999999999999999999999999"]; ok {
+		t.Error("session deleted under v2 survived from the v1-compat table")
+	}
+}
+
+// Databases that predate the v2 schema only have `session`; the provider must
+// still list them.
+func TestLegacySessionTableFallback(t *testing.T) {
+	root := t.TempDir()
+	copyTree(t, fixtureDir(t, "opencode-home"), root)
+	db, err := sql.Open("sqlite", filepath.Join(root, "opencode.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("DROP TABLE session_v2"); err != nil {
+		db.Close()
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv(envData, root)
+	t.Setenv(envBin, filepath.Join(fixtureDir(t, "..", "mock-bin", "opencode")))
+	p := New()
+	sessions, err := p.ListSessions(session.Filters{AllTime: true, Days: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sessions) != 4 {
+		t.Fatalf("legacy table listed %d sessions, want 4", len(sessions))
+	}
+	found := false
+	for _, s := range sessions {
+		if s.SessionID == "ses_ffffffffffffffffffffffffffff" {
+			t.Error("session_v2-only row leaked into a legacy-only database")
+		}
+		if s.SessionID == "ses_9999999999999999999999999999" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("legacy-only session missing when session_v2 is absent")
 	}
 }
 
@@ -246,7 +312,7 @@ func TestNoTimeFilterByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(sessions) != 3 {
-		t.Fatalf("zero-value filter listed %d sessions, want 3 (no time limit)", len(sessions))
+	if len(sessions) != 4 {
+		t.Fatalf("zero-value filter listed %d sessions, want 4 (no time limit)", len(sessions))
 	}
 }

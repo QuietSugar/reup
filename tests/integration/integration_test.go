@@ -36,16 +36,19 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.RemoveAll(tmp)
 	binPath = filepath.Join(tmp, "reup")
 
 	build := exec.Command("go", "build", "-o", binPath, ".")
 	build.Dir = repoRoot
 	if out, err := build.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "build failed: %v\n%s", err, out)
+		_ = os.RemoveAll(tmp)
 		os.Exit(1)
 	}
-	os.Exit(m.Run())
+	// os.Exit skips defers, so clean the scratch dir explicitly.
+	code := m.Run()
+	_ = os.RemoveAll(tmp)
+	os.Exit(code)
 }
 
 func fixtureEnv(t *testing.T) []string {

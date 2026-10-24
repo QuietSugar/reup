@@ -98,6 +98,21 @@ func key(s string) tea.KeyMsg {
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
 }
 
+// runCmd executes a command and returns its message, or nil when the command
+// does not produce one immediately. The idle-timeout tick is a wall-clock
+// timer; draining it synchronously would stall for its full duration, so
+// the drain helper below drops it (idle behavior has dedicated tests).
+func runCmd(cmd tea.Cmd) tea.Msg {
+	ch := make(chan tea.Msg, 1)
+	go func() { ch <- cmd() }()
+	select {
+	case msg := <-ch:
+		return msg
+	case <-time.After(50 * time.Millisecond):
+		return nil
+	}
+}
+
 // drive feeds keys to the model, draining any commands they return (so the
 // mutation cmd and the follow-up rescan are executed synchronously).
 func drive(t *testing.T, m Model, keys ...string) Model {
@@ -105,14 +120,34 @@ func drive(t *testing.T, m Model, keys ...string) Model {
 	for _, k := range keys {
 		up, cmd := m.Update(key(k))
 		m = up.(Model)
-		for cmd != nil {
-			msg := cmd()
-			if msg == nil {
-				break
-			}
-			up, cmd = m.Update(msg)
-			m = up.(Model)
+		m = drain(t, m, cmd)
+	}
+	return m
+}
+
+// drain executes a command chain until no message arrives immediately.
+// Batch messages enqueue every sub-command; timer commands never produce a
+// message immediately and are dropped.
+func drain(t *testing.T, m Model, cmd tea.Cmd) Model {
+	t.Helper()
+	queue := []tea.Cmd{cmd}
+	for len(queue) > 0 {
+		c := queue[0]
+		queue = queue[1:]
+		if c == nil {
+			continue
 		}
+		msg := runCmd(c)
+		if msg == nil {
+			continue
+		}
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			queue = append(queue, batch...)
+			continue
+		}
+		up, next := m.Update(msg)
+		m = up.(Model)
+		queue = append(queue, next)
 	}
 	return m
 }
