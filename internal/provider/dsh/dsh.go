@@ -11,6 +11,11 @@
 // Title arrives as session/title events, user prompts as user/message events
 // with data.content[].text. The .zstd files are concatenated zstd frames —
 // klauspost/compress decodes them all transparently.
+//
+// Archived sessions live on: dsh records them in the registry-global
+// archivedSessionIds set in storages/workspace.json while keeping their
+// workspace slot, and hides them from every grouping surface. reup skips
+// those ids so an archived session does not reappear in the list.
 package dsh
 
 import (
@@ -68,6 +73,33 @@ func home() string {
 	}
 	base, _ := os.UserHomeDir()
 	return filepath.Join(base, ".dsh")
+}
+
+// workspaceState is the part of dsh's storages/workspace.json reup reads.
+// archivedSessionIds is the registry-global archive set: archiving keeps the
+// session in its workspace's sessionIds but hides it from the UI.
+type workspaceState struct {
+	Global struct {
+		ArchivedSessionIDs []string `json:"archivedSessionIds"`
+	} `json:"global"`
+}
+
+// archivedSessions returns dsh's archived session ids. A missing or malformed
+// state file yields no filter: the session logs are still a usable list.
+func archivedSessions() map[string]bool {
+	data, err := os.ReadFile(filepath.Join(home(), "storages", "workspace.json"))
+	if err != nil {
+		return nil
+	}
+	var st workspaceState
+	if json.Unmarshal(data, &st) != nil || len(st.Global.ArchivedSessionIDs) == 0 {
+		return nil
+	}
+	archived := make(map[string]bool, len(st.Global.ArchivedSessionIDs))
+	for _, id := range st.Global.ArchivedSessionIDs {
+		archived[id] = true
+	}
+	return archived
 }
 
 // headerEvent is the type:"session" first line of a session log.
@@ -177,8 +209,9 @@ func decode(path string) (io.Reader, func(), error) {
 }
 
 // ListSessions implements provider.Provider. Sub-agent logs
-// (delegationDepth > 0) and header-only logs without prompts are skipped, so
-// the list shows the sessions a user actually started.
+// (delegationDepth > 0), header-only logs without prompts, and sessions the
+// harness has archived are skipped, so the list shows the sessions a user
+// actually started and can still open.
 func (p *Provider) ListSessions(f session.Filters) ([]session.Session, error) {
 	root := filepath.Join(home(), "sessions")
 	paths, err := filepath.Glob(filepath.Join(root, "*", "session-*", "session*.jsonl*"))
@@ -186,10 +219,11 @@ func (p *Provider) ListSessions(f session.Filters) ([]session.Session, error) {
 		return nil, err
 	}
 	sort.Strings(paths)
+	archived := archivedSessions()
 	var out []session.Session
 	for _, path := range paths {
 		s, err := parseSessionFile(path)
-		if err != nil || s == nil {
+		if err != nil || s == nil || archived[s.SessionID] {
 			continue
 		}
 		out = append(out, *s)
@@ -226,6 +260,9 @@ func parseSessionFile(path string) (*session.Session, error) {
 // LoadDetail implements provider.Provider: the same parse, plus every user
 // prompt for the preview panel.
 func (p *Provider) LoadDetail(id string) (*session.Session, error) {
+	if archivedSessions()[id] {
+		return nil, fmt.Errorf("dsh session %s is archived", id)
+	}
 	paths, err := filepath.Glob(filepath.Join(home(), "sessions", "*", "session-*", "session*.jsonl*"))
 	if err != nil {
 		return nil, err

@@ -9,6 +9,10 @@ keep a fresh empty `[Unreleased]` on top.
 
 ## [Unreleased]
 
+### Fixed
+
+- DeepSeek Harness sessions archived in the harness no longer reappear: dsh keeps an archived session in its workspace accounting and only records the id in `storages/workspace.json`, so the provider now reads that archive set and skips those sessions
+
 ## [0.0.3] - 2026-10-25
 
 ### Fixed

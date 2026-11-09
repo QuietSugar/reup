@@ -171,6 +171,71 @@ func TestListSessionsParsesDshLogs(t *testing.T) {
 	}
 }
 
+// dsh archives a session by adding it to the registry-global archive set in
+// storages/workspace.json while leaving its workspace slot and log on disk.
+// Those sessions are hidden in the harness UI, so reup must hide them too.
+func TestListSessionsSkipsArchived(t *testing.T) {
+	home := setupHome(t)
+	writeWorkspaceState(t, home, `{
+  "unit": {"name": "workspace", "version": 2},
+  "global": {
+    "initialized": true,
+    "workspaceIds": [],
+    "archivedSessionIds": ["session-44444444-4444-4444-8444-444444444444"],
+    "pinnedSessionIds": []
+  },
+  "tables": {"workspaces": {}}
+}`)
+
+	ss, err := New().ListSessions(session.Filters{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ss) != 1 {
+		t.Fatalf("sessions = %d, want 1 (archived session hidden)", len(ss))
+	}
+	if ss[0].SessionID != "session-11111111-1111-4111-8111-111111111111" {
+		t.Errorf("listed %q, want the unarchived main session", ss[0].SessionID)
+	}
+	if _, err := New().LoadDetail("session-44444444-4444-4444-8444-444444444444"); err == nil {
+		t.Error("archived session detail must not resolve")
+	}
+}
+
+// A missing or malformed workspace.json must not hide sessions: the logs are
+// still a usable list when the harness state is unavailable.
+func TestListSessionsToleratesBadWorkspaceState(t *testing.T) {
+	for name, content := range map[string]string{
+		"missing":   "",
+		"malformed": "{not json",
+	} {
+		t.Run(name, func(t *testing.T) {
+			home := setupHome(t)
+			if content != "" {
+				writeWorkspaceState(t, home, content)
+			}
+			ss, err := New().ListSessions(session.Filters{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(ss) != 2 {
+				t.Fatalf("sessions = %d, want 2 (state ignored)", len(ss))
+			}
+		})
+	}
+}
+
+func writeWorkspaceState(t *testing.T, home, content string) {
+	t.Helper()
+	dir := filepath.Join(home, "storages")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "workspace.json"), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestLoadDetailReturnsPrompts(t *testing.T) {
 	setupHome(t)
 	d, err := New().LoadDetail("session-11111111-1111-4111-8111-111111111111")
