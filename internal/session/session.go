@@ -18,7 +18,8 @@ type Session struct {
 	Cwd          string
 	// WorkspaceID is the provider-native workspace/project identifier when the
 	// provider exposes one (kimi: the on-disk `wd_<slug>_<hash>` bucket key;
-	// opencode: session.workspace_id, else project_id). "" when the provider has
+	// opencode: session.workspace_id, else project_id; agy: project_id).
+	// "" when the provider has
 	// none.
 	WorkspaceID string
 	// WorkspaceRoot is the directory the provider records as the workspace root

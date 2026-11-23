@@ -20,6 +20,7 @@ const ansiReset = "\x1b[0m"
 // BadgeANSI maps source → badge color. Kept here so the renderer does not
 // import provider packages.
 var BadgeANSI = map[string]string{
+	"agy":       "\x1b[33m", // yellow
 	"codebuddy": "\x1b[36m", // cyan
 	"kimi-code": "\x1b[35m", // magenta
 	"opencode":  "\x1b[34m", // blue

@@ -1,5 +1,5 @@
 // Package sqliteread is a minimal read-only SQLite file scanner. reup
-// needs to list rows from opencode's session database without taking on a
+// uses it to list rows from local agent session databases without taking on a
 // SQLite driver dependency, so this implements just enough of the on-disk
 // format for one job: walk a table b-tree and decode records.
 //

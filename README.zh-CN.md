@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)](#安装)
 
-> 浏览、恢复、管理 CodeBuddy / Kimi Code / OpenCode 的会话（DeepSeek Harness 仅列表）——一个选择器，零依赖。
+> 浏览、恢复、管理 Antigravity CLI / CodeBuddy / Kimi Code / OpenCode 的会话（DeepSeek Harness 仅列表）——一个选择器，零依赖。
 
 单个静态二进制。不需要 Python、fzf，无需任何配置。打开选择器，跨 provider 浏览全部最近的 AI CLI 会话并预览详情，回车即回到对话。
 
@@ -70,7 +70,7 @@ workspace 过滤，点击会话行选中（双击恢复），滚轮滚动列表�
 
 常用参数（选择器与 `list` 通用）：`--days N`（只看最近 N 天——**默认不限
 时间，列出全部会话**）、`--date YYYY-MM-DD`、`--all`（保留兼容，现为默认）、
-`--project foo`、`--source codebuddy|kimi-code|opencode|dsh`、`--limit N`。
+`--project foo`、`--source agy|codebuddy|kimi-code|opencode|dsh`、`--limit N`。
 `list` 模式另有 `--no-group`（平铺表格代替分组）、`--json`、`--full [N]`。
 JSON 的 `asst_count` 字段与详情面板中的 assistant 活动数是各 provider 粗略
 的体量估计：统计口径不同，数值不精确，也不能跨 provider 直接比较。
@@ -90,7 +90,8 @@ JSON 的 `asst_count` 字段与详情面板中的 assistant 活动数是各 prov
 
 分组键就是会话的工作目录，多个 agent 用过的目录自然归为一组。当 provider
 记录了原生 workspace/project 标识（Kimi Code 的 `wd_<slug>_<hash>` 会话桶与
-`workspaces.json`；OpenCode 的 `workspace_id`/`project_id`），则以其作为
+`workspaces.json`；OpenCode 的 `workspace_id`/`project_id`；Antigravity CLI 的
+`project_id`），则以其作为
 分组身份——也是没有目录信息时的最后回退键。既无目录也无原生 id 的会话
 按 provider 归入 `(no workspace)`。
 
@@ -119,6 +120,7 @@ reup provider on opencode
 
 | Provider | 会话来源 | 恢复命令 |
 |---|---|---|
+| Antigravity CLI（`agy`） | `~/.gemini/antigravity-cli/conversation_summaries.db` + `brain/<id>/.system_generated/logs/transcript.jsonl` | `agy --conversation <id>` |
 | CodeBuddy CLI | `~/.codebuddy/projects/**/*.jsonl` | `codebuddy --resume <id>` |
 | Kimi Code CLI | `~/.kimi-code/sessions/<workDirKey>/<id>/` | `kimi --session <id>` |
 | OpenCode | `~/.local/share/opencode/opencode.db`（v1.1+；推荐 v2） | `opencode --session <id>` |
@@ -133,7 +135,9 @@ reup provider on opencode
 的目录布局（检查快照：`daa6c55099d34458ff773f6c1edd777f16fb7693`）。reup
 只读取浏览与恢复所需的会话元数据。
 
-CodeBuddy 的存储格式与 TokenTracker 及其 CLI 恢复参考做了交叉核对。Kimi
+CodeBuddy 的存储格式与 TokenTracker 及其 CLI 恢复参考做了交叉核对。Antigravity
+CLI 的存储格式对照本机数据与 TokenTracker 读取器验证，恢复行为遵循
+[官方 `/resume` 文档](https://antigravity.google/docs/cli/commands/resume/)。Kimi
 Code 与 OpenCode 的行为分别对照 kimi-code **2.1.1** 与 opencode
 **1.18.33**/**2.0.32** 源码验证；更早版本仅尽力兼容。真机验证步骤见
 [docs/real-world-testing.md](docs/real-world-testing.md)。

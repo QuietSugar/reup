@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)](#install)
 
-> Browse, resume, and manage sessions from CodeBuddy, Kimi Code, and OpenCode (DeepSeek Harness list-only) — one picker, zero dependencies.
+> Browse, resume, and manage sessions from Antigravity CLI, CodeBuddy, Kimi Code, and OpenCode (DeepSeek Harness list-only) — one picker, zero dependencies.
 
 A single static binary. No Python, no fzf, no setup. Open the picker, see every
 recent AI-CLI session across providers with a full preview, hit Enter, and you're
@@ -80,7 +80,7 @@ the installed base has moved.
 Useful flags (both picker and `list`): `--days N` (narrow to the last N days —
 **the default is no time limit, so every session is listed**), `--date YYYY-MM-DD`,
 `--all` (kept for compatibility; it is now the default), `--project foo`,
-`--source codebuddy|kimi-code|opencode|dsh`, `--limit N`. List mode adds
+`--source agy|codebuddy|kimi-code|opencode|dsh`, `--limit N`. List mode adds
 `--no-group` (flat table instead of workspace groups), `--json`, and `--full [N]`.
 The `asst_count` JSON field and detail-preview
 assistant activity figure are provider-specific rough size estimates; counting
@@ -104,7 +104,8 @@ header looks like:
 The grouping key is the session's working directory, so a directory used from
 several agents lands in one group. When a provider records a native
 workspace/project identifier (Kimi Code's `wd_<slug>_<hash>` session bucket and
-`workspaces.json`; OpenCode's `workspace_id`/`project_id`), it is used as the
+`workspaces.json`; OpenCode's `workspace_id`/`project_id`; Antigravity CLI's
+`project_id`), it is used as the
 group's identity — and as the last-resort key when no directory is known.
 Sessions with neither a directory nor a native id are shown under
 `(no workspace)`, scoped per provider.
@@ -136,6 +137,7 @@ provider — the flag is a deliberate per-invocation request.
 
 | Provider | Session source | Resume command |
 |---|---|---|
+| Antigravity CLI (`agy`) | `~/.gemini/antigravity-cli/conversation_summaries.db` + `brain/<id>/.system_generated/logs/transcript.jsonl` | `agy --conversation <id>` |
 | CodeBuddy CLI | `~/.codebuddy/projects/**/*.jsonl` | `codebuddy --resume <id>` |
 | Kimi Code CLI | `~/.kimi-code/sessions/<workDirKey>/<id>/` | `kimi --session <id>` |
 | OpenCode | `~/.local/share/opencode/opencode.db` (v1.1+; v2 recommended) | `opencode --session <id>` |
@@ -151,7 +153,10 @@ its Claude Code-derived layout (inspected snapshot: `daa6c55099d34458ff773f6c1ed
 reup only reads the session metadata needed for browsing and resuming.
 
 CodeBuddy's storage format was cross-checked against TokenTracker and its CLI
-resume reference. Kimi Code and OpenCode behavior was verified against
+resume reference. Antigravity CLI storage was checked against its local data and
+TokenTracker's reader; resume behavior follows the
+[official `/resume` reference](https://antigravity.google/docs/cli/commands/resume/).
+Kimi Code and OpenCode behavior was verified against
 kimi-code **2.1.1** and opencode **1.18.33**/**2.0.32** sources; older releases
 are best-effort only. For real-machine validation steps,
 see [docs/real-world-testing.md](docs/real-world-testing.md).

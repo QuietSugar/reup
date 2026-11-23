@@ -12,6 +12,7 @@
 - Validate storage formats and resume commands against the agent's actual source or authoritative CLI reference. Third-party trackers are useful research references, not substitutes for provider-source verification.
 - **Reference parsers**: [TokenTracker](https://github.com/xiufengsun/TokenTracker) has known-good parsers for every supported agent's session storage (kimi, codebuddy, opencode, dsh/DeepSeek Harness, codex, claude…). When adding a provider or fixing a parse bug, read its source first (`src/lib/rollout.js` and `src/commands/sync.js`) — path discovery, file formats, and edge cases are documented inline. A local clone usually exists at `~/git-repo/github.com/xiufengsun/TokenTracker`.
 - Keep test fixtures synthetic. Do not commit real session logs, prompts, home-directory paths, credentials, or other personal data.
+- Test sessions created through reup must be immediately recognizable: prefix both the session name/title and the message content with `[REUP-TEST]`. Use synthetic content only.
 
 ## Adding a provider
 

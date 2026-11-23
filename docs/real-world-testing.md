@@ -8,6 +8,7 @@ provider.
 
 | var | purpose |
 |---|---|
+| `REUP_AGY_HOME` / `REUP_AGY_BIN` | redirect `~/.gemini/antigravity-cli` / binary |
 | `REUP_CODEBUDDY_HOME` | redirect `~/.codebuddy` |
 | `REUP_KIMI_HOME` / `REUP_KIMI_BIN` | redirect `~/.kimi-code` / binary |
 | `REUP_OPENCODE_DATA` / `REUP_OPENCODE_BIN` | redirect opencode data / binary |

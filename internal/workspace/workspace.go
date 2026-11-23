@@ -2,7 +2,7 @@
 //
 // A workspace is identified by its working directory so that the same directory
 // opened in different providers lands in one group; a provider-native workspace
-// id (kimi's `wd_<slug>_<hash>` bucket, opencode's workspace/project id) is only
+// id (kimi's `wd_<slug>_<hash>` bucket, opencode/agy's workspace/project id) is only
 // a fallback when no directory is known, and never merges across providers.
 package workspace
 

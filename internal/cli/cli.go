@@ -19,6 +19,7 @@ import (
 	"github.com/QuietSugar/reup/internal/cwd"
 	"github.com/QuietSugar/reup/internal/execres"
 	"github.com/QuietSugar/reup/internal/provider"
+	"github.com/QuietSugar/reup/internal/provider/agy"
 	"github.com/QuietSugar/reup/internal/provider/codebuddy"
 	"github.com/QuietSugar/reup/internal/provider/dsh"
 	"github.com/QuietSugar/reup/internal/provider/kimi"
@@ -30,6 +31,7 @@ import (
 
 func registerProviders() {
 	if len(provider.All()) == 0 {
+		provider.Register(agy.New())
 		provider.Register(codebuddy.New())
 		provider.Register(kimi.New())
 		provider.Register(opencode.New())
@@ -51,7 +53,7 @@ Unified AI CLI session {{name}}.
                        "restore SOURCE SESSION_ID" shows one again
 
 options:
-  --source NAME    limit to a single provider (codebuddy | kimi-code | opencode | dsh)
+  --source NAME    limit to a single provider (agy | codebuddy | kimi-code | opencode | dsh)
   --days N         only show sessions active in the last N days (default: no limit)
   --date DATE      YYYY-MM-DD — only sessions active on this date
   --all            no time filter
@@ -184,7 +186,7 @@ func Run(argv []string, version string) int {
 	// at `provider on` rather than claiming nothing is installed.
 	if *source == "" && len(provider.AvailableSourceNames()) == 0 {
 		msg := "error: no session providers available. " +
-			"Install CodeBuddy, Kimi, or OpenCode and ensure their session storage exists."
+			"Install Antigravity CLI, CodeBuddy, Kimi, or OpenCode and ensure their session storage exists."
 		if dis := provider.DisabledNames(); len(dis) > 0 {
 			msg = fmt.Sprintf(
 				"error: no enabled session providers available (disabled: %s). "+
@@ -316,6 +318,7 @@ func execResume(s *session.Session) int {
 	if err != nil {
 		binName := s.ResumeArgv[0]
 		installHint := map[string]string{
+			"agy":       "https://antigravity.google/docs/cli",
 			"codebuddy": "https://www.codebuddy.ai/docs/cli/reference",
 			"kimi":      "https://github.com/MoonshotAI/kimi-code",
 			"opencode":  "https://opencode.ai/docs",

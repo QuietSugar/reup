@@ -1,0 +1,6 @@
+#!/bin/bash
+# Mock Antigravity CLI binary for reup QA.
+LOG="${AGY_MOCK_LOG:-/tmp/reup/qa/agy-mock.log}"
+mkdir -p "$(dirname "$LOG")"
+echo "CALLED pwd=$PWD args=$*" > "$LOG"
+sleep 0.2

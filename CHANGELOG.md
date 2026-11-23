@@ -9,6 +9,10 @@ keep a fresh empty `[Unreleased]` on top.
 
 ## [Unreleased]
 
+### Added
+
+- Antigravity CLI (`agy`) sessions: browse summaries and prompts, filter by workspace/date, and resume with `agy --conversation <id>`
+
 ### Fixed
 
 - DeepSeek Harness sessions archived in the harness no longer reappear: dsh keeps an archived session in its workspace accounting and only records the id in `storages/workspace.json`, so the provider now reads that archive set and skips those sessions

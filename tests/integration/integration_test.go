@@ -73,8 +73,9 @@ func fixtureEnvWithConfig(t *testing.T, cfgPath string) []string {
 		"REUP_KIMI_BIN=kimi",
 		"REUP_OPENCODE_DATA=" + filepath.Join(repoRoot, "tests", "fixtures", "opencode-home"),
 		"REUP_OPENCODE_BIN=opencode",
-		// The dsh provider reads the real ~/.dsh otherwise; integration
-		// fixtures pin only the three main providers.
+		// Keep non-fixture providers away from the developer's real data.
+		"REUP_AGY_HOME=" + t.TempDir(),
+		"REUP_AGY_BIN=agy-missing-for-integration",
 		"REUP_DSH_HOME=" + t.TempDir(),
 		// Sentinel pre-burned via XDG redirect so the first-run star message
 		// doesn't interleave with exec assertions.

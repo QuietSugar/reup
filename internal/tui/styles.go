@@ -22,6 +22,7 @@ var (
 	metaValueStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("15")) // bright values
 
 	badgeStyle = map[string]lipgloss.Style{
+		"agy":       lipgloss.NewStyle().Foreground(lipgloss.Color("3")), // yellow
 		"codebuddy": lipgloss.NewStyle().Foreground(lipgloss.Color("6")), // cyan
 		"kimi-code": lipgloss.NewStyle().Foreground(lipgloss.Color("5")), // magenta
 		"opencode":  lipgloss.NewStyle().Foreground(lipgloss.Color("4")), // blue
