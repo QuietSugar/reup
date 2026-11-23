@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,9 @@ import (
 )
 
 func TestAgySelectExec(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("agy is not supported on macOS")
+	}
 	root := t.TempDir()
 	workspace := filepath.Join(root, "workspace")
 	if err := os.MkdirAll(workspace, 0o755); err != nil {

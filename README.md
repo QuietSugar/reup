@@ -42,6 +42,9 @@ reup list         # grouped by workspace, every session
 reup --help       # everything else
 ```
 
+For a step-by-step guide, common tasks, and troubleshooting, see the
+[usage tutorial](docs/tutorial.md) ([中文教程](docs/tutorial.zh-CN.md)).
+
 Picker keys: `↑↓` browse · `/` filter · `tab` provider tabs · `w` sidebar ·
 `o`/`v` toggle panels · `g` group mode · `d` hide/archive · `P` providers · `?` help ·
 `enter` resume · `esc` cancel. The mouse works too: click a provider tab to
@@ -62,11 +65,12 @@ yellow → red in the picker: blank <20 messages, `▁` 20–49, `▄` 50–149,
   it detached (no terminal, no browser), archives, and shuts it down again
   through its graceful `/api/v1/shutdown`; a server you started yourself is
   left alone and the modal points you at its web UI instead.
-- **opencode / codebuddy**: hidden in reup only (neither exposes an
-  official per-session hide/delete for stored history — codebuddy's
+- **opencode / codebuddy / agy / dsh**: hidden in reup only; no official
+  archive flow is used. Files stay on disk, the agent keeps showing the
+  session, and token statistics are unaffected. OpenCode's real delete command
+  is `opencode session delete <sessionID>`. CodeBuddy's
   `DELETE /api/v1/sessions/:id` is a silent no-op outside a live instance,
-  verified against its sources). Files stay on disk, the agent keeps showing
-  the session, and token statistics are unaffected.
+  verified against its sources.
 
 `reup hidden` lists hidden sessions; `reup hidden restore SOURCE
 SESSION_ID` shows one again.
@@ -80,7 +84,7 @@ the installed base has moved.
 Useful flags (both picker and `list`): `--days N` (narrow to the last N days —
 **the default is no time limit, so every session is listed**), `--date YYYY-MM-DD`,
 `--all` (kept for compatibility; it is now the default), `--project foo`,
-`--source agy|codebuddy|kimi-code|opencode|dsh`, `--limit N`. List mode adds
+`--source agy|codebuddy|kimi-code|opencode|dsh`. List mode adds `--limit N`,
 `--no-group` (flat table instead of workspace groups), `--json`, and `--full [N]`.
 The `asst_count` JSON field and detail-preview
 assistant activity figure are provider-specific rough size estimates; counting
@@ -110,8 +114,8 @@ group's identity — and as the last-resort key when no directory is known.
 Sessions with neither a directory nor a native id are shown under
 `(no workspace)`, scoped per provider.
 
-`--json` stays a flat array (add the `workspace_id`/`workspace_root` fields
-yourself if you need to group downstream). Use `reup list --no-group` for the
+`--json` stays a flat array (use the included `workspace_id`/`workspace_root`
+fields if you need to group downstream). Use `reup list --no-group` for the
 old flat table, or `--source NAME` to restrict to a single provider (no
 cross-provider merging then).
 
@@ -137,11 +141,13 @@ provider — the flag is a deliberate per-invocation request.
 
 | Provider | Session source | Resume command |
 |---|---|---|
-| Antigravity CLI (`agy`) | `~/.gemini/antigravity-cli/conversation_summaries.db` + `brain/<id>/.system_generated/logs/transcript.jsonl` | `agy --conversation <id>` |
+| Antigravity CLI (`agy`, Linux only) | `~/.gemini/antigravity-cli/conversation_summaries.db` + `brain/<id>/.system_generated/logs/transcript.jsonl` | `agy --conversation <id>` |
 | CodeBuddy CLI | `~/.codebuddy/projects/**/*.jsonl` | `codebuddy --resume <id>` |
 | Kimi Code CLI | `~/.kimi-code/sessions/<workDirKey>/<id>/` | `kimi --session <id>` |
 | OpenCode | `~/.local/share/opencode/opencode.db` (v1.1+; v2 recommended) | `opencode --session <id>` |
 | DeepSeek Harness (`dsh`) | `~/.dsh/sessions/<workDirKey>/<id>/session.v4.jsonl[.zstd]` | list-only — the harness exposes no resume entry point, Enter reports "no resume command" |
+
+`dsh` currently does not apply `--project`, `--days`, or `--date`.
 
 The committed opencode test database is regenerated with
 `go run ./tools/opencodefixture tests/fixtures/opencode-home/opencode.db`.

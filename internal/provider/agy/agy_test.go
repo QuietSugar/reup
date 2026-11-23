@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -92,7 +93,15 @@ func listAll(t *testing.T, p *Provider) map[string]session.Session {
 	return out
 }
 
+func requireLinux(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "darwin" {
+		t.Skip("agy is not supported on macOS")
+	}
+}
+
 func TestListSessions(t *testing.T) {
+	requireLinux(t)
 	p := newTestProvider(t)
 	if !p.IsAvailable() {
 		t.Fatal("provider should be available with a database and agy binary")
@@ -142,6 +151,7 @@ func TestListSessions(t *testing.T) {
 }
 
 func TestFilters(t *testing.T) {
+	requireLinux(t)
 	p := newTestProvider(t)
 	onDate, err := p.ListSessions(session.Filters{Date: "2026-04-15"})
 	if err != nil {
@@ -174,6 +184,7 @@ func TestFilters(t *testing.T) {
 }
 
 func TestLoadDetail(t *testing.T) {
+	requireLinux(t)
 	p := newTestProvider(t)
 	s, err := p.LoadDetail("agy-main-001")
 	if err != nil {
@@ -199,6 +210,16 @@ func TestCleanUserInputLegacySettings(t *testing.T) {
 	input := "changed setting `Model Selection` from Auto to Gemini 3.5 Flash.\nLegacy prompt"
 	if got := cleanUserInput(input); got != "Legacy prompt" {
 		t.Errorf("cleanUserInput = %q", got)
+	}
+}
+
+func TestMacOSUnavailable(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("macOS-only provider guard")
+	}
+	p := newTestProvider(t)
+	if p.IsAvailable() {
+		t.Fatal("agy must be unavailable on macOS")
 	}
 }
 

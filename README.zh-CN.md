@@ -40,6 +40,9 @@ reup list         # 按工作区分组列出全部会话
 reup --help       # 其余全部用法
 ```
 
+完整的新手教程、常见任务和故障排查见[使用教程](docs/tutorial.zh-CN.md)
+（[English](docs/tutorial.md)）。
+
 选择器按键：`↑↓` 浏览 · `/` 过滤 · `tab` 切换 provider 页签 · `w` 侧栏 ·
 `o`/`v` 开关面板 · `g` 分组模式 · `d` 隐藏/归档 · `P` provider 管理 · `?` 帮助 ·
 `enter` 恢复 · `esc` 取消。鼠标同样可用：点击顶栏页签切换 agent，点击侧栏
@@ -56,10 +59,10 @@ workspace 过滤，点击会话行选中（双击恢复），滚轮滚动列表�
   界面中同样隐藏。若 `kimi web` 未运行，reup 会以脱离终端的方式启动它
   （不占终端、不弹浏览器），完成归档后再通过其优雅的 `/api/v1/shutdown`
   关闭；你自己启动的服务器不会被触碰，弹窗会指向它的 Web UI。
-- **opencode / codebuddy**：仅在 reup 中隐藏（两者都没有针对存储历史的
-  官方单会话隐藏/删除机制——经源码验证，codebuddy 的
-  `DELETE /api/v1/sessions/:id` 在实例外是静默空操作）。文件不动，agent
-  照常显示该会话，token 统计不受影响。
+- **opencode / codebuddy / agy / dsh**：仅在 reup 中隐藏，不调用官方归档流程。
+  文件不动，agent 照常显示该会话，token 统计不受影响。OpenCode 的真实删除
+  命令是 `opencode session delete <sessionID>`；经源码验证，CodeBuddy 的
+  `DELETE /api/v1/sessions/:id` 在实例外是静默空操作。
 
 `reup hidden` 列出已隐藏会话；`reup hidden restore SOURCE SESSION_ID`
 恢复显示。
@@ -70,8 +73,8 @@ workspace 过滤，点击会话行选中（双击恢复），滚轮滚动列表�
 
 常用参数（选择器与 `list` 通用）：`--days N`（只看最近 N 天——**默认不限
 时间，列出全部会话**）、`--date YYYY-MM-DD`、`--all`（保留兼容，现为默认）、
-`--project foo`、`--source agy|codebuddy|kimi-code|opencode|dsh`、`--limit N`。
-`list` 模式另有 `--no-group`（平铺表格代替分组）、`--json`、`--full [N]`。
+`--project foo`、`--source agy|codebuddy|kimi-code|opencode|dsh`。
+`list` 模式另有 `--limit N`、`--no-group`（平铺表格代替分组）、`--json`、`--full [N]`。
 JSON 的 `asst_count` 字段与详情面板中的 assistant 活动数是各 provider 粗略
 的体量估计：统计口径不同，数值不精确，也不能跨 provider 直接比较。
 
@@ -120,11 +123,13 @@ reup provider on opencode
 
 | Provider | 会话来源 | 恢复命令 |
 |---|---|---|
-| Antigravity CLI（`agy`） | `~/.gemini/antigravity-cli/conversation_summaries.db` + `brain/<id>/.system_generated/logs/transcript.jsonl` | `agy --conversation <id>` |
+| Antigravity CLI（`agy`，仅 Linux） | `~/.gemini/antigravity-cli/conversation_summaries.db` + `brain/<id>/.system_generated/logs/transcript.jsonl` | `agy --conversation <id>` |
 | CodeBuddy CLI | `~/.codebuddy/projects/**/*.jsonl` | `codebuddy --resume <id>` |
 | Kimi Code CLI | `~/.kimi-code/sessions/<workDirKey>/<id>/` | `kimi --session <id>` |
 | OpenCode | `~/.local/share/opencode/opencode.db`（v1.1+；推荐 v2） | `opencode --session <id>` |
 | DeepSeek Harness（`dsh`） | `~/.dsh/sessions/<workDirKey>/<id>/session.v4.jsonl[.zstd]` | 仅列表——harness 无恢复入口，回车会提示 "no resume command" |
+
+`dsh` 当前不应用 `--project`、`--days` 和 `--date`。
 
 仓库内提交的 opencode 测试数据库用以下命令重新生成：
 `go run ./tools/opencodefixture tests/fixtures/opencode-home/opencode.db`。

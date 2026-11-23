@@ -1,5 +1,6 @@
 // Package agy reads Antigravity CLI conversation summaries and transcripts
-// from ~/.gemini/antigravity-cli. Resume: agy --conversation <id>.
+// from ~/.gemini/antigravity-cli on Linux. Resume: agy --conversation <id>.
+// The provider is unavailable on macOS.
 package agy
 
 import (
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -64,6 +66,9 @@ func (p *Provider) Name() string      { return "agy" }
 func (p *Provider) Badge() string     { return "agy" }
 func (p *Provider) BadgeANSI() string { return "\x1b[33m" }
 func (p *Provider) IsAvailable() bool {
+	if runtime.GOOS == "darwin" {
+		return false
+	}
 	_, err := exec.LookPath(agyBin())
 	return err == nil && dbPath() != ""
 }

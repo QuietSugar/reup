@@ -58,7 +58,7 @@ options:
   --date DATE      YYYY-MM-DD — only sessions active on this date
   --all            no time filter
   --project STR    substring match against project name
-  --limit N        top N after sort
+  --limit N        list mode: top N after sort
   --no-group       list mode: flat table, do not group by workspace
   --json           list mode only: emit JSON array of sessions
   --full [N]       list mode only: render detailed boxes for top N (default 5)

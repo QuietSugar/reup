@@ -11,7 +11,8 @@ keep a fresh empty `[Unreleased]` on top.
 
 ### Added
 
-- Antigravity CLI (`agy`) sessions: browse summaries and prompts, filter by workspace/date, and resume with `agy --conversation <id>`
+- Antigravity CLI (`agy`) sessions on Linux: browse summaries and prompts, filter by workspace/date, and resume with `agy --conversation <id>`; the provider is unavailable on macOS
+- Bilingual usage tutorials covering installation, common tasks, provider differences, configuration, privacy, and troubleshooting
 
 ### Fixed
 
