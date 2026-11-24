@@ -9,6 +9,8 @@ keep a fresh empty `[Unreleased]` on top.
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-11-24
+
 ### Added
 
 - Antigravity CLI (`agy`) sessions on Linux: browse summaries and prompts, filter by workspace/date, and resume with `agy --conversation <id>`; the provider is unavailable on macOS
