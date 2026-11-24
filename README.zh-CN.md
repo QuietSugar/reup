@@ -58,11 +58,15 @@ workspace 过滤，点击会话行选中（双击恢复），滚轮滚动列表�
 - **kimi-code**：通过 kimi 自己的 API 官方归档——可恢复，且在 kimi 自己的
   界面中同样隐藏。若 `kimi web` 未运行，reup 会以脱离终端的方式启动它
   （不占终端、不弹浏览器），完成归档后再通过其优雅的 `/api/v1/shutdown`
-  关闭；你自己启动的服务器不会被触碰，弹窗会指向它的 Web UI。
+  关闭；你自己启动的服务器不会被触碰，弹窗会指向它的 Web UI。运行
+  `kimi web` 可在其全局界面中统一管理所有 Kimi 会话。
 - **opencode / codebuddy / agy / dsh**：仅在 reup 中隐藏，不调用官方归档流程。
-  文件不动，agent 照常显示该会话，token 统计不受影响。OpenCode 的真实删除
-  命令是 `opencode session delete <sessionID>`；经源码验证，CodeBuddy 的
-  `DELETE /api/v1/sessions/:id` 在实例外是静默空操作。
+  文件不动，agent 照常显示该会话，token 统计不受影响。各 provider 标签下的
+  `?` 帮助会给出官方管理入口：agy 的 `/resume`（F4 删除）、OpenCode TUI 的
+  `ctrl+d` 或 `opencode session delete <sessionID>`、CodeBuddy 按项目清理的
+  `codebuddy project purge [path]`（先用 `--dry-run` 预览），以及 DeepSeek
+  Harness 页面。经源码验证，CodeBuddy 的 `DELETE /api/v1/sessions/:id`
+  在实例外是静默空操作。
 
 `reup hidden` 列出已隐藏会话；`reup hidden restore SOURCE SESSION_ID`
 恢复显示。
@@ -157,7 +161,7 @@ reup 还修复了一个现实中的痛点：当会话记录的 cwd 已失效（i
 
 当会话的工作目录已被删除——项目改名、移动、删除，或会话数据被带到了
 另一台机器——该会话无法恢复。reup 在 `reup list` 与选择器中把项目列显示
-为 `(deleted)`，回车时拒绝启动 agent CLI，并打印缺失路径与解锁命令，而不
+为 `(directory missing)`，回车时拒绝启动 agent CLI，并打印缺失路径与解锁命令，而不
 是 CLI 自己那句含混的 `created under a different directory`：
 
 ```

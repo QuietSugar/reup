@@ -32,6 +32,8 @@ The default locations are always the real ones.
 
 - Hide flows (d → Enter): opencode/codebuddy/agy/dsh write a config key and the
   row disappears with no agent call; kimi archives through its API.
+- `?` on each provider tab shows that agent's native delete/archive path;
+  the All tab points back to the provider tabs.
 - `reup hidden` lists; `restore SOURCE SESSION_ID` unhides.
 - Resume: agent starts in the session's directory (mock-bin logs assert
   `pwd=`); after exit a `cd <dir>` hint is printed.

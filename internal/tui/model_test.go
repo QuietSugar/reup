@@ -212,8 +212,8 @@ func TestSessionRowMarksDeletedDirectory(t *testing.T) {
 	})
 	m.rebuild()
 	out := m.sessionRow(&m.all[len(m.all)-1], false, 120)
-	if !strings.Contains(out, textutil.DirDeletedLabel) {
-		t.Errorf("row should carry the deleted label: %q", out)
+	if !strings.Contains(out, textutil.DirMissingLabel) {
+		t.Errorf("row should carry the directory-missing label: %q", out)
 	}
 }
 

@@ -203,6 +203,14 @@ A disabled provider is not read during ambient scans or by the picker.
 | OpenCode | `opencode --session <id>` | Hides in reup only; real deletion uses OpenCode's own command |
 | DeepSeek Harness (`dsh`) | List-only; reup cannot resume these sessions | Hides in reup only |
 
+Open `?` on a provider tab to see its native session-management instructions:
+
+- **agy**: run `agy`, enter `/resume`, and press **F4** on a conversation to delete it.
+- **CodeBuddy**: `codebuddy project purge [path]` cleans one project's sessions and other local state, not just one session. Preview first with `--dry-run`.
+- **Kimi Code**: run `kimi web` to manage all sessions in its global Web UI.
+- **OpenCode**: press **Ctrl+D** in its TUI to delete a session interactively.
+- **DeepSeek Harness**: archive or delete sessions in the Harness UI; reup recognizes its archived state.
+
 Kimi Code has special server rules:
 
 - If `kimi web` is not running, confirming an archive starts it with `kimi web --no-open`. After a successful archive, reup stops the spawned server through the official shutdown API.
@@ -223,7 +231,7 @@ reup groups by working directory first, so sessions created by different agents 
 
 ### The working directory was deleted
 
-If a project was moved, renamed, or removed, its rows show `(deleted)`. On `enter`, reup refuses to launch the agent and prints the missing path.
+If a project was moved, renamed, or removed, its rows show `(directory missing)`. On `enter`, reup refuses to launch the agent and prints the missing path.
 
 If you intend to restore the original directory, follow the printed hint:
 

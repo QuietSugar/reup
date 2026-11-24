@@ -95,7 +95,7 @@ func TestRenderersFlagMissingWorkingDirectory(t *testing.T) {
 	idx := Index([]session.Session{gone})
 	// The project column must say the directory is gone, not pass the stale
 	// name off as a live project.
-	if !strings.Contains(idx, textutil.DirDeletedLabel) {
+	if !strings.Contains(idx, textutil.DirMissingLabel) {
 		t.Errorf("index row should mark the deleted directory:\n%s", idx)
 	}
 	if strings.Contains(idx, "old-project") {
@@ -113,7 +113,7 @@ func TestRenderersFlagMissingWorkingDirectory(t *testing.T) {
 		Source: "kimi-code", SessionID: "s2", ProjectLabel: "live-project",
 		Cwd: t.TempDir(), FirstPrompt: "hello",
 	}
-	if idx := Index([]session.Session{alive}); strings.Contains(idx, textutil.DirDeletedLabel) {
+	if idx := Index([]session.Session{alive}); strings.Contains(idx, textutil.DirMissingLabel) {
 		t.Errorf("a session whose cwd exists must not be flagged:\n%s", idx)
 	}
 	if box := FullBox(&alive); strings.Contains(box, "directory no longer exists") {
@@ -122,10 +122,10 @@ func TestRenderersFlagMissingWorkingDirectory(t *testing.T) {
 
 	// The grouped header identifies the workspace by its (stale) directory, so
 	// it must carry the deleted marker too.
-	if grp := IndexGrouped([]session.Session{gone}); !strings.Contains(grp, textutil.DirDeletedLabel) {
+	if grp := IndexGrouped([]session.Session{gone}); !strings.Contains(grp, textutil.DirMissingLabel) {
 		t.Errorf("grouped header should mark the deleted workspace:\n%s", grp)
 	}
-	if grp := IndexGrouped([]session.Session{alive}); strings.Contains(grp, textutil.DirDeletedLabel) {
+	if grp := IndexGrouped([]session.Session{alive}); strings.Contains(grp, textutil.DirMissingLabel) {
 		t.Errorf("grouped header for an existing directory must not be flagged:\n%s", grp)
 	}
 }

@@ -73,7 +73,7 @@ func indexRow(s *session.Session) string {
 	badge := Badge(s.Source, BadgeANSI[s.Source])
 	projLabel := s.ProjectLabel
 	if cwd.Missing(s) {
-		projLabel = textutil.DirDeletedLabel
+		projLabel = textutil.DirMissingLabel
 	}
 	proj := textutil.PadDisplay(textutil.TrimDisplay(projLabel, 25), 25)
 	msgs := s.AsstCount + len(s.Prompts)
@@ -154,12 +154,12 @@ func groupHeader(g workspace.Group) string {
 	if len(g.Sessions) == 1 {
 		noun = "session"
 	}
-	deleted := ""
+	missing := ""
 	if len(g.Sessions) > 0 && cwd.Missing(&g.Sessions[0]) {
-		deleted = "  (deleted)"
+		missing = "  " + textutil.DirMissingLabel
 	}
 	return fmt.Sprintf("── %s  ·  %d %s  ·  %s%s",
-		label, len(g.Sessions), noun, strings.Join(g.Providers, ", "), deleted)
+		label, len(g.Sessions), noun, strings.Join(g.Providers, ", "), missing)
 }
 
 // MetaLines renders a session's identity/timing metadata: no prompt content.

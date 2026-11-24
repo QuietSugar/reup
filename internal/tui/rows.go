@@ -107,7 +107,7 @@ func (m Model) sessionRow(s *session.Session, selected bool, w int) string {
 		title = strings.TrimSpace(s.FirstPrompt)
 	}
 	if cwd.Missing(s) {
-		title += " " + textutil.DirDeletedLabel
+		title += " " + textutil.DirMissingLabel
 	}
 	// Pad the title to its column so every row has identical width and the
 	// panels never shift when the content changes.

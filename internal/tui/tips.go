@@ -54,38 +54,47 @@ func loadCustomTips() string {
 func tipsForSource(source string) string {
 	lines := []string{
 		"Session tips",
-		"d hides a session: kimi via its",
-		"official archive, others via a",
-		"reup-only hidden list.",
+		"d: kimi = official archive;",
+		"other providers = reup-only hide.",
 		"",
 	}
 	switch source {
+	case "agy":
+		lines = append(lines,
+			"Antigravity CLI: run agy, then",
+			"enter /resume to manage sessions.",
+			"F4 deletes; no official archive.",
+		)
 	case "opencode":
 		lines = append(lines,
-			"OpenCode: d hides in reup",
-			"only (no official archive API).",
-			"Real delete: opencode session",
-			"delete <sessionID>",
+			"OpenCode: TUI ctrl+d deletes.",
+			"CLI: opencode session delete <id>",
+			"No official archive; d = reup hide.",
 		)
 	case "kimi-code":
 		lines = append(lines,
 			"Kimi: d = official archive",
-			"(restorable, hidden in kimi",
-			"too). kimi web is started and",
-			"stopped automatically.",
+			"(restorable). Run kimi web to",
+			"manage all sessions in its global UI.",
 		)
 	case "codebuddy":
 		lines = append(lines,
-			"CodeBuddy: d hides in reup",
-			"only (no official per-session",
-			"delete; cleanup is day-based).",
-			"Files stay untouched.",
+			"CodeBuddy: no per-session delete.",
+			"Project cleanup: codebuddy project",
+			"purge [path] (try --dry-run first).",
+			"This removes project state, not just",
+			"one session.",
+		)
+	case "dsh":
+		lines = append(lines,
+			"DeepSeek Harness: use the Harness",
+			"UI to archive/delete sessions.",
+			"reup detects archives; d = reup hide.",
 		)
 	default:
 		lines = append(lines,
-			"Use this Agent's own CLI/TUI",
-			"session manager. The exact",
-			"steps differ by Agent/version.",
+			"Switch to a provider tab for its",
+			"official delete/archive instructions.",
 		)
 	}
 	lines = append(lines,

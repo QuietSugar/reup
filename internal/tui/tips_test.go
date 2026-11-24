@@ -3,8 +3,33 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestTipsForSourceProviderManagement(t *testing.T) {
+	tests := []struct {
+		source string
+		want   []string
+	}{
+		{source: "agy", want: []string{"/resume", "F4"}},
+		{source: "opencode", want: []string{"ctrl+d", "opencode session delete <id>"}},
+		{source: "kimi-code", want: []string{"official archive", "kimi web", "global UI"}},
+		{source: "codebuddy", want: []string{"codebuddy project", "purge [path]", "--dry-run"}},
+		{source: "dsh", want: []string{"Harness", "archive/delete"}},
+		{source: "", want: []string{"provider tab", "delete/archive"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.source, func(t *testing.T) {
+			tips := tipsForSource(tt.source)
+			for _, want := range tt.want {
+				if !strings.Contains(tips, want) {
+					t.Errorf("tipsForSource(%q) missing %q:\n%s", tt.source, want, tips)
+				}
+			}
+		})
+	}
+}
 
 func TestLoadCustomTipsFallsBackWhenFileIsMissing(t *testing.T) {
 	t.Setenv("REUP_TIPS_FILE", "")

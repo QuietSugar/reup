@@ -116,12 +116,12 @@ func PadDisplay(s string, targetW int) string {
 	return s + strings.Repeat(" ", targetW-w)
 }
 
-// DirDeletedLabel replaces the project column for a session whose recorded
+// DirMissingLabel replaces the project column for a session whose recorded
 // working directory no longer exists. Such a session cannot be resumed until
 // the directory is recreated, so the row must not pass itself off as a live
 // project — and it must not read as a bare "(unknown)" either. Parenthesized
 // to match the providers' own "(unknown)" placeholder.
-const DirDeletedLabel = "(deleted)"
+const DirMissingLabel = "(directory missing)"
 
 // VolumeMarker is the fixed 1-col conversation weight bar. Block glyphs scale
 // with the session size, so the level reads at a glance:

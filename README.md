@@ -64,13 +64,16 @@ yellow → red in the picker: blank <20 messages, `▁` 20–49, `▄` 50–149,
   hidden in kimi's surfaces too. If `kimi web` is not running, reup starts
   it detached (no terminal, no browser), archives, and shuts it down again
   through its graceful `/api/v1/shutdown`; a server you started yourself is
-  left alone and the modal points you at its web UI instead.
+  left alone and the modal points you at its web UI instead. Run `kimi web`
+  to manage all Kimi sessions in its global UI.
 - **opencode / codebuddy / agy / dsh**: hidden in reup only; no official
   archive flow is used. Files stay on disk, the agent keeps showing the
-  session, and token statistics are unaffected. OpenCode's real delete command
-  is `opencode session delete <sessionID>`. CodeBuddy's
-  `DELETE /api/v1/sessions/:id` is a silent no-op outside a live instance,
-  verified against its sources.
+  session, and token statistics are unaffected. The provider tab's `?` help
+  shows the native cleanup path: agy's `/resume` (F4 delete), OpenCode's TUI
+  `ctrl+d` or `opencode session delete <sessionID>`, CodeBuddy's project-wide
+  `codebuddy project purge [path]` (preview with `--dry-run`), or the DeepSeek
+  Harness UI. CodeBuddy's `DELETE /api/v1/sessions/:id` is a silent no-op
+  outside a live instance, verified against its sources.
 
 `reup hidden` lists hidden sessions; `reup hidden restore SOURCE
 SESSION_ID` shows one again.
@@ -179,7 +182,7 @@ from the session file location, so `codebuddy --resume` actually works.
 When a session's working directory has been deleted — the project was renamed,
 moved, or removed, or the session data was carried to another machine — that
 session cannot be resumed. reup replaces the project column with
-`(deleted)` in both `reup list` and the picker, and refuses to launch the
+`(directory missing)` in both `reup list` and the picker, and refuses to launch the
 agent CLI on Enter, printing the missing path and the command that unblocks it
 instead of the CLI's own opaque `created under a different directory` error:
 

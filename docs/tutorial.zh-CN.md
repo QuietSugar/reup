@@ -205,6 +205,14 @@ reup provider on opencode
 | OpenCode | `opencode --session <id>` | 仅在 reup 中隐藏；真实删除需使用 OpenCode 自己的命令 |
 | DeepSeek Harness（`dsh`） | 当前仅列表，不能从 reup 恢复 | 仅在 reup 中隐藏 |
 
+在具体 provider 标签下按 `?`，可以查看该工具的官方会话管理入口：
+
+- **agy**：运行 `agy`，输入 `/resume`，选中会话后按 **F4** 删除。
+- **CodeBuddy**：`codebuddy project purge [path]` 清理一个项目的会话及其他本地状态，并非只清理单个会话；先加 `--dry-run` 预览。
+- **Kimi Code**：运行 `kimi web`，在其全局 Web 页面中统一管理所有会话。
+- **OpenCode**：在其 TUI 中按 **Ctrl+D** 交互删除会话。
+- **DeepSeek Harness**：在 Harness 页面中归档或删除会话；reup 会识别其归档状态。
+
 Kimi Code 的特殊规则：
 
 - 没有运行 `kimi web` 时，确认归档后 reup 会通过 `kimi web --no-open` 启动本地服务；归档成功后通过官方 shutdown API 关闭它。
@@ -225,7 +233,7 @@ reup 优先按会话的工作目录分组，因此同一个目录下由不同 ag
 
 ### 工作目录已删除
 
-如果项目被移动、改名或删除，列表会显示 `(deleted)`，按 `enter` 时 reup 会拒绝启动 agent，并打印缺失路径。
+如果项目被移动、改名或删除，列表会显示 `(directory missing)`，按 `enter` 时 reup 会拒绝启动 agent，并打印缺失路径。
 
 确认需要恢复原目录后，可按提示重新创建：
 

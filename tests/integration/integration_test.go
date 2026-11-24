@@ -125,7 +125,7 @@ func TestUnifiedRender(t *testing.T) {
 	}
 	// The one session whose working directory is gone must say so instead of
 	// passing its stale name off as a live project.
-	if !strings.Contains(s, textutil.DirDeletedLabel) {
+	if !strings.Contains(s, textutil.DirMissingLabel) {
 		t.Errorf("output should flag the deleted working directory: %q", s)
 	}
 	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
@@ -165,7 +165,7 @@ func TestGroupedRender(t *testing.T) {
 		t.Fatalf("grouped output has no workspace headers:\n%s", grouped)
 	}
 	// A workspace header must mark the deleted directory, not only the row.
-	if !strings.Contains(grouped, textutil.DirDeletedLabel) {
+	if !strings.Contains(grouped, textutil.DirMissingLabel) {
 		t.Errorf("grouped output should flag the deleted workspace:\n%s", grouped)
 	}
 	// Every flat session row must survive verbatim inside the grouped output.
@@ -556,7 +556,7 @@ func TestSelectRefusesWhenWorkingDirectoryIsGone(t *testing.T) {
 	r := startPicker(t, env, "--source=kimi-code", "--project", "kimi-four")
 	// The project column must say the directory is gone before the user
 	// commits to the row.
-	r.waitFor(t, textutil.DirDeletedLabel, 5*time.Second)
+	r.waitFor(t, textutil.DirMissingLabel, 5*time.Second)
 	r.send("\r")
 	// Enter must not exec, and the console must say the session cannot be
 	// resumed and what to do about it.
