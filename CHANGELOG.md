@@ -9,6 +9,16 @@ keep a fresh empty `[Unreleased]` on top.
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-11-24
+
+### Added
+
+- Provider-specific `?` help now documents native session management: Kimi Web's global UI, OpenCode interactive deletion, CodeBuddy project purge, agy's `/resume`, and the DeepSeek Harness UI
+
+### Fixed
+
+- Sessions whose working directory no longer exists are now labeled `(directory missing)` instead of `(deleted)`, avoiding confusion with deleted sessions
+
 ## [0.0.4] - 2026-11-24
 
 ### Added
